@@ -1,0 +1,24 @@
+{
+  "name": "cytoscape-cise",
+  "description": "Circular layout extension for Cytoscape.js",
+  "main": "cytoscape-cise.js",
+  "dependencies": {
+    "cytoscape": "3.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iVis-at-Bilkent/cytoscape.js-cise.git"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "keywords": [
+    "cytoscape",
+    "cytoscape-extension"
+  ],
+  "license": "MIT"
+}
