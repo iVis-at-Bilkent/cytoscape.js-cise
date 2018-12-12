@@ -22,7 +22,20 @@ let config = {
       { test: /\.js$/, exclude: /node_modules/, use: 'babel-loader' }
     ]
   },
-  externals: PROD ? Object.keys( pkg.dependencies || {} ) : [],
+    externals: PROD ? {
+        'layout-base': {
+            commonjs2: 'layout-base',
+            commonjs: 'layout-base',
+            amd: 'layout-base',
+            root: 'layoutBase'
+        },
+        'cytoscape-avsdf' : {
+            commonjs2: 'cytoscape-avsdf',
+            commonjs: 'cytoscape-avsdf',
+            amd: 'cytoscape-avsdf',
+            root: 'cytoscape-avsdf'
+        }
+    } : {},
   plugins: MIN ? [
     new webpack.optimize.UglifyJsPlugin({
       compress: {

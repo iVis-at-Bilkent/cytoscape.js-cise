@@ -55,5 +55,8 @@
   "peerDependencies": {
     "cytoscape": "3.1.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "layout-base": "https://github.com/iVis-at-Bilkent/layout-base#unstable",
+    "avsdf": "https://github.com/iVis-at-Bilkent/cytoscape.js-avsdf#no-template"
+  }
 }
