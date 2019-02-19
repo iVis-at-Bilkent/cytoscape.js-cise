@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "layout-base": "https://github.com/iVis-at-Bilkent/layout-base#unstable",
-    "avsdf": "https://github.com/iVis-at-Bilkent/cytoscape.js-avsdf#no-template"
+    "cytoscape-avsdf": "https://github.com/iVis-at-Bilkent/cytoscape.js-avsdf#no-template",
+    "cytoscape-cose-bilkent": "https://github.com/cytoscape/cytoscape.js-cose-bilkent"
   }
 }

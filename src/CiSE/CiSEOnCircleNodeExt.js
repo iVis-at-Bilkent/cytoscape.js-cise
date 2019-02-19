@@ -254,7 +254,7 @@ CiSEOnCircleNodeExt.prototype.calculateTotalCrossing = function()
 
 // This function updates the conditions for swapping of this node with its
 // previous and next neighbors on the associated circle.
-CiSEOnCircleNodeExt.prototype.calculateTotalCrossing = function()
+CiSEOnCircleNodeExt.prototype.updateSwappingConditions = function()
 {
     let self = this;
 
