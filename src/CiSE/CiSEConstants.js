@@ -1,4 +1,12 @@
-let FDLayoutConstants =  require('layout-base').FDLayoutConstants;
+/**
+ * This class maintains the constants used by CiSE layout.
+ *
+ *
+ * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
+ */
+
+
+let FDLayoutConstants =  require('avsdf-base').layoutBase.FDLayoutConstants;
 
 function CiSEConstants(){}
 
@@ -27,7 +35,7 @@ CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
 CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.2;
 
 // -----------------------------------------------------------------------------
-// Section: CiSE layout remaining contants
+// Section: CiSE layout remaining constants
 // -----------------------------------------------------------------------------
 
 // Ideal length of an edge incident with an inner-node

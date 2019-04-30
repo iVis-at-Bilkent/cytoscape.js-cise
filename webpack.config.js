@@ -23,17 +23,17 @@ let config = {
     ]
   },
     externals: PROD ? {
-        'layout-base': {
-            commonjs2: 'layout-base',
-            commonjs: 'layout-base',
-            amd: 'layout-base',
-            root: 'layoutBase'
+        'cose-base': {
+            commonjs2: 'cose-base',
+            commonjs: 'cose-base',
+            amd: 'cose-base',
+            root: 'coseBase'
         },
-        'cytoscape-avsdf' : {
-            commonjs2: 'cytoscape-avsdf',
-            commonjs: 'cytoscape-avsdf',
-            amd: 'cytoscape-avsdf',
-            root: 'cytoscape-avsdf'
+        'avsdf-base' : {
+            commonjs2: 'avsdf-base',
+            commonjs: 'avsdf-base',
+            amd: 'avsdf-base',
+            root: 'avsdfBase'
         }
     } : {},
   plugins: MIN ? [

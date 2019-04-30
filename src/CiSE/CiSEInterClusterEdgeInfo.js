@@ -1,3 +1,11 @@
+/**
+ * This class keeps the information of each inter-cluster edge of the associated
+ * circle. It is to be used for sorting inter-cluster edges based on this info.
+ *
+ *
+ * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
+ */
+
 function CiSEInterClusterEdgeInfo(edge, angle)
 {
     // Inter-cluster edge
@@ -11,7 +19,7 @@ function CiSEInterClusterEdgeInfo(edge, angle)
     this.angle = angle;
 }
 
-CiSEInterClusterEdgeInfo.prototype = Object.create();
+CiSEInterClusterEdgeInfo.prototype = Object.create(null);
 
 CiSEInterClusterEdgeInfo.prototype.getEdge = function()
 {

@@ -1,10 +1,10 @@
 {
   "name": "cytoscape-cise",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Circular layout extension for Cytoscape.js",
   "main": "cytoscape-cise.js",
   "author": {
-    "name": "ivis",
+    "name": "i-Vis (Information Visualization) Research Lab",
     "email": "ivis@cs.bilkent.edu.tr"
   },
   "scripts": {
@@ -53,11 +53,10 @@
     "updater-license": "^1.0.0"
   },
   "peerDependencies": {
-    "cytoscape": "3.1.1"
+    "cytoscape": "^3.2.0"
   },
   "dependencies": {
-    "layout-base": "https://github.com/iVis-at-Bilkent/layout-base#unstable",
-    "cytoscape-avsdf": "https://github.com/iVis-at-Bilkent/cytoscape.js-avsdf#no-template",
-    "cytoscape-cose-bilkent": "https://github.com/cytoscape/cytoscape.js-cose-bilkent"
+    "avsdf-base": "^1.0.0",
+    "cose-base": "^1.0.0"
   }
 }

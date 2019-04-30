@@ -15,7 +15,7 @@ let tick = function( state ){
 
   s.tickIndex++;
 
-  let duration = s.startTime - Date.now();
+  let duration = Date.now() - s.startTime;
 
   return !s.infinite && ( tickIndicatesDone || s.tickIndex >= s.maxIterations || duration >= s.maxSimulationTime );
 };
@@ -24,7 +24,7 @@ let multitick = function( state, onNotDone = nop, onDone = nop ){
   let done = false;
   let s = state;
 
-  for( let i = 0; i < s.maxIterations; i++ ){
+  for( let i = 0; i < s.refresh; i++ ){
     done = !s.running || tick( s );
 
     if( done ){ break; }

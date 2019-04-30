@@ -1,5 +1,14 @@
-let Quicksort = require('layout-base').Quicksort;
-let LinkedList = require('layout-base').LinkedList;
+/**
+ * This class sorts the array of input edges based on the associated angles. If
+ * angles turn out to be the same, then we sort the edges based on their
+ * in-cluster end nodes' orders in clockwise direction. This information is
+ * calculated beforehand and stored in a matrix in each associated circle.
+ *
+ *
+ */
+
+let Quicksort = require('avsdf-base').layoutBase.Quicksort;
+let LinkedList = require('avsdf-base').layoutBase.LinkedList;
 
 function CiSEInterClusterEdgeSort(ownerCircle)
 {
@@ -18,7 +27,7 @@ CiSEInterClusterEdgeSort.prototype.compare = function(a,b)
     }
     else if(b.getAngle() > a.getAngle())
     {
-        if(a == b)
+        if(a === b)
         {
             return false;
         }

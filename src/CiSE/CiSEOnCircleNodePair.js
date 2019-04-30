@@ -1,3 +1,8 @@
+/**
+ * This class implements a pair of on-circle nodes used for swapping in phase 4.
+ *
+ */
+
 // -----------------------------------------------------------------------------
 // Section: Constructors and initializations
 // -----------------------------------------------------------------------------
@@ -6,7 +11,7 @@ function CiSEOnCircleNodePair(first, second, displacement, inSameDirection)
 {
     if(first.getOnCircleNodeExt() !== null && second.getOnCircleNodeExt() != null)
     {
-        throw "the nodes in a pair must be onCircle nodes!!"
+        throw "the nodes in a pair must be onCircle nodes!!";
     }
 
     // The node of the pair which comes first in the ordering of its owner
@@ -57,49 +62,7 @@ CiSEOnCircleNodePair.prototype.getSecondNode = function()
 // -----------------------------------------------------------------------------
 // Section: Remaining methods
 // -----------------------------------------------------------------------------
-CiSEOnCircleNodePair.prototype.compareTo = function(other)
-{
-    return Math.trunc(this.getDiscrepancy() - other.getDiscrepancy()); // TODO check
-};
 
-CiSEOnCircleNodePair.prototype.swap = function()
-{
-    this.getFirstNode().getOnCircleNodeExt().swapWith(
-      this.getSecondNode().getOnCircleNodeExt());
-};
-
-// TODO check correctness especially node.equals function
-CiSEOnCircleNodePair.prototype.equals = function(other)
-{
-    let self = this;
-
-    let result = other instanceof CiSEOnCircleNodePair;
-
-    if(result)
-    {
-        result &= (this.firstNode.equals(pair.getFirstNode()) &&
-            this.secondNode.equals(pair.getSecondNode())) ||
-            (this.secondNode.equals(pair.getFirstNode()) &&
-                this.firstNode.equals(pair.getSecondNode()));
-    }
-
-    return result;
-};
-
-// TODO check correctness
-CiSEOnCircleNodePair.prototype.hashCode = function()
-{
-    return this.firstNode.hashCode() + this.secondNode.hashCode();
-};
-
-CiSEOnCircleNodePair.prototype.toString = function()
-{
-    let result = "Swap: " + this.getFirstNode().label;
-    result += "<->"+ this.getSecondNode().label;
-    result +=", "+ this.getDiscrepancy();
-
-    return result;
-};
 
 module.exports = CiSEOnCircleNodePair;
 

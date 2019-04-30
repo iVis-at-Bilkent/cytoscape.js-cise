@@ -9,9 +9,9 @@
 
 		<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
 
-		<!-- for testing with local version of cytoscape.js -->
-		<!--<script src="../cytoscape.js/build/cytoscape.js"></script>-->
-
+		<script src="https://raw.githack.com/iVis-at-Bilkent/layout-base/master/layout-base.js"></script>
+		<script src="https://raw.githack.com/iVis-at-Bilkent/avsdf-base/master/avsdf-base.js"></script>
+		<script src="https://raw.githack.com/iVis-at-Bilkent/cose-base/master/cose-base.js"></script>
 		<script src="cytoscape-cise.js"></script>
 
 		<style>
@@ -39,21 +39,38 @@
 		<script>
 			document.addEventListener('DOMContentLoaded', function(){
 
+				let arrayOfClusterArrays = [
+					['v1', 'v2', 'v3', 'v4', 'v7'],
+					['v8', 'v11', 'v12', 'v13', 'v14', 'v15'],
+					['v5', 'v6', 'v9', 'v10'],
+					['v16', 'v17', 'v18', 'v21', 'v20', 'v22', 'v19'],
+					['v27', 'v28', 'v29', 'v30', 'v31', 'v32', 'v33', 'v34', 'v35'],
+					['v36', 'v37', 'v38', 'v39', 'v40', 'v41' ]
+				];
+
+				let clusterColors = ['#3a7ecf', '#37CF47', '#CF2727', '#CA34CF', '#CF7B13', '#CFCE00'];
+
 				var cy = window.cy = cytoscape({
 					container: document.getElementById('cy'),
 
 					// demo your layout
 					layout: {
 						name: 'cise',
-
-						// some more options here...
+						DEFAULT_NODE_SEPARATION: 40,
+						clusters: arrayOfClusterArrays
 					},
-
 					style: [
 						{
 							selector: 'node',
 							style: {
-								'content': 'data(name)'
+								'content': 'data(id)',
+								'background-color': function(ele){
+									for(let i = 0; i < arrayOfClusterArrays.length; i++)
+										if(arrayOfClusterArrays[i].includes(ele.data('id')))
+											return clusterColors[i];
+
+									return '#756D76';
+								}
 							}
 						},
 
@@ -61,33 +78,122 @@
 							selector: 'edge',
 							style: {
 								'curve-style': 'bezier',
-								'target-arrow-shape': 'triangle'
+								'opacity': 0.65,
+								'line-color': function(ele){
+									let source = ele.source();
+									let target = ele.target();
+									for(let i = 0; i < arrayOfClusterArrays.length; i++)
+										if(arrayOfClusterArrays[i].includes(source.data('id')) &&
+												arrayOfClusterArrays[i].includes(target.data('id')))
+											return clusterColors[i];
+
+									return '#756D76';
+								}
 							}
 						}
 					],
 
 					elements: {
 						nodes: [
-							{ data: { id: 'j', name: 'Jerry' } },
-							{ data: { id: 'e', name: 'Elaine' } },
-							{ data: { id: 'k', name: 'Kramer' } },
-							{ data: { id: 'g', name: 'George' } }
+							{ data: { id: 'v1'} },
+							{ data: { id: 'v2'} },
+							{ data: { id: 'v3'} },
+							{ data: { id: 'v4'} },
+							{ data: { id: 'v5'} },
+							{ data: { id: 'v6'} },
+							{ data: { id: 'v7'} },
+							{ data: { id: 'v8'} },
+							{ data: { id: 'v9'} },
+							{ data: { id: 'v10'} },
+							{ data: { id: 'v11'} },
+							{ data: { id: 'v12'} },
+							{ data: { id: 'v13'} },
+							{ data: { id: 'v14'} },
+							{ data: { id: 'v15'} },
+							{ data: { id: 'v16'} },
+							{ data: { id: 'v17'} },
+							{ data: { id: 'v18'} },
+							{ data: { id: 'v19'} },
+							{ data: { id: 'v20'} },
+							{ data: { id: 'v21'} },
+							{ data: { id: 'v22'} },
+							{ data: { id: 'v23'} },
+							{ data: { id: 'v24'} },
+							{ data: { id: 'v25'} },
+							{ data: { id: 'v26'} },
+							{ data: { id: 'v27'} },
+							{ data: { id: 'v28'} },
+							{ data: { id: 'v29'} },
+							{ data: { id: 'v30'} },
+							{ data: { id: 'v31'} },
+							{ data: { id: 'v32'} },
+							{ data: { id: 'v33'} },
+							{ data: { id: 'v34'} },
+							{ data: { id: 'v35'} },
+							{ data: { id: 'v36'} },
+							{ data: { id: 'v37'} },
+							{ data: { id: 'v38'} },
+							{ data: { id: 'v39'} },
+							{ data: { id: 'v40'} },
+							{ data: { id: 'v41'} }
 						],
 						edges: [
-							{ data: { source: 'j', target: 'e' } },
-							{ data: { source: 'j', target: 'k' } },
-							{ data: { source: 'j', target: 'g' } },
-							{ data: { source: 'e', target: 'j' } },
-							{ data: { source: 'e', target: 'k' } },
-							{ data: { source: 'k', target: 'j' } },
-							{ data: { source: 'k', target: 'e' } },
-							{ data: { source: 'k', target: 'g' } },
-							{ data: { source: 'g', target: 'j' } }
+							{ data: { source: 'v1', target: 'v2', directed: false} },
+							{ data: { source: 'v1', target: 'v7', directed: false} },
+							{ data: { source: 'v2', target: 'v7', directed: false} },
+							{ data: { source: 'v3', target: 'v7', directed: false} },
+							{ data: { source: 'v2', target: 'v3', directed: false} },
+							{ data: { source: 'v3', target: 'v4', directed: false} },
+							{ data: { source: 'v4', target: 'v5', directed: false} },
+							{ data: { source: 'v4', target: 'v11', directed: false} },
+							{ data: { source: 'v5', target: 'v11', directed: false} },
+							{ data: { source: 'v8', target: 'v11', directed: false} },
+							{ data: { source: 'v8', target: 'v14', directed: false} },
+							{ data: { source: 'v8', target: 'v13', directed: false} },
+							{ data: { source: 'v11', target: 'v15', directed: false} },
+							{ data: { source: 'v11', target: 'v12', directed: false} },
+							{ data: { source: 'v11', target: 'v13', directed: false} },
+							{ data: { source: 'v13', target: 'v14', directed: false} },
+							{ data: { source: 'v13', target: 'v15', directed: false} },
+							{ data: { source: 'v15', target: 'v12', directed: false} },
+							{ data: { source: 'v5', target: 'v6', directed: false} },
+							{ data: { source: 'v10', target: 'v6', directed: false} },
+							{ data: { source: 'v9', target: 'v6', directed: false} },
+							{ data: { source: 'v6', target: 'v16', directed: false} },
+							{ data: { source: 'v16', target: 'v17', directed: false} },
+							{ data: { source: 'v17', target: 'v18', directed: false} },
+							{ data: { source: 'v17', target: 'v21', directed: false} },
+							{ data: { source: 'v21', target: 'v20', directed: false} },
+							{ data: { source: 'v20', target: 'v22', directed: false} },
+							{ data: { source: 'v21', target: 'v22', directed: false} },
+							{ data: { source: 'v22', target: 'v19', directed: false} },
+							{ data: { source: 'v21', target: 'v23', directed: false} },
+							{ data: { source: 'v20', target: 'v24', directed: false} },
+							{ data: { source: 'v23', target: 'v24', directed: false} },
+							{ data: { source: 'v23', target: 'v25', directed: false} },
+							{ data: { source: 'v24', target: 'v25', directed: false} },
+							{ data: { source: 'v25', target: 'v26', directed: false} },
+							{ data: { source: 'v24', target: 'v28', directed: false} },
+							{ data: { source: 'v27', target: 'v28', directed: false} },
+							{ data: { source: 'v28', target: 'v35', directed: false} },
+							{ data: { source: 'v27', target: 'v34', directed: false} },
+							{ data: { source: 'v27', target: 'v31', directed: false} },
+							{ data: { source: 'v34', target: 'v35', directed: false} },
+							{ data: { source: 'v31', target: 'v34', directed: false} },
+							{ data: { source: 'v31', target: 'v33', directed: false} },
+							{ data: { source: 'v32', target: 'v33', directed: false} },
+							{ data: { source: 'v30', target: 'v32', directed: false} },
+							{ data: { source: 'v29', target: 'v30', directed: false} },
+							{ data: { source: 'v35', target: 'v41', directed: false} },
+							{ data: { source: 'v34', target: 'v40', directed: false} },
+							{ data: { source: 'v40', target: 'v41', directed: false} },
+							{ data: { source: 'v37', target: 'v40', directed: false} },
+							{ data: { source: 'v37', target: 'v38', directed: false} },
+							{ data: { source: 'v36', target: 'v37', directed: false} },
+							{ data: { source: 'v36', target: 'v39', directed: false} }
 						]
 					}
 				});
-
-
 			});
 		</script>
 	</head>
