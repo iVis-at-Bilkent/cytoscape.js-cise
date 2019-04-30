@@ -4,13 +4,19 @@ cytoscape.js-cise
 
 ## Description
 
-Circular layout extension for Cytoscape.js ([demo](https://iVis-at-Bilkent.github.io/cytoscape.js-cise))
+CiSE(Circular Spring Embedder) is an algorithm based on the traditional force-directed layout scheme with extensions to move and rotate nodes in the same cluster as a group. Further local improvements may be obtained by flipping clusters and by swapping neighboring node pairs in the same cluster, reducing the edge crossing number.
+
+The algorithm is implemented as a Cytoscape.js extension by [i-Vis Lab](http://cs.bilkent.edu.tr/~ivis/) in Bilkent University ([demo](https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-cise/develop/demo.html))
+
+Please cite the following when using this layout:
+
+M. Belviranli, A. Dilek and U. Dogrusoz, "[CiSE: A Circular Spring Embedder Layout Algorithm](https://dlnext.acm.org/doi/abs/10.1109/TVCG.2012.178)" in IEEE Transactions on Visualization & Computer Graphics, vol. 19, no. 06, pp. 953-966, 2013.
 
 ## Dependencies
 
- * Cytoscape.js 3.1.1
- * <List your dependencies here please>
-
+ * Cytoscape.js: ^3.2.0
+ * avsdf-base: ^1.0.0
+ * cose-base: ^1.0.0
 
 ## Usage instructions
 
@@ -77,3 +83,7 @@ This project is set up to automatically be published to npm and bower.  To publi
 1. Publish to npm: `npm publish .`
 1. If publishing to bower for the first time, you'll need to run `bower register cytoscape-cise https://github.com/iVis-at-Bilkent/cytoscape.js-cise.git`
 1. [Make a new release](https://github.com/iVis-at-Bilkent/cytoscape.js-cise/releases/new) for Zenodo.
+
+## Team
+
+  * [Alihan Okka](https://github.com/alihanokka) and [Ugur Dogrusoz](https://github.com/ugurdogrusoz) of [i-Vis at Bilkent University](http://www.cs.bilkent.edu.tr/~ivis)
