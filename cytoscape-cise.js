@@ -885,8 +885,6 @@ CiSELayout.prototype.doStep1 = function () {
                 }
             }
 
-            console.log(this.graphManager);
-
             // Run AVSDF layout
             avsdfLayout.layout();
 
@@ -950,10 +948,12 @@ CiSELayout.prototype.doStep2 = function () {
     coseLayout.useMultiLevelScaling = false;
     coseLayout.useFRGridVariant = true;
     coseLayout.springConstant *= 1.5;
+
     var gm = coseLayout.newGraphManager();
     var coseRoot = gm.addRoot();
 
     // Traverse through all nodes and create new CoSENode's.
+    // !WARNING! = REMEMBER to set unique "id" properties to CoSENodes!!!!
     var nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
     for (var i = 0; i < nonOnCircleNodes.length; i++) {
         var ciseNode = nonOnCircleNodes[i];
@@ -970,6 +970,9 @@ CiSELayout.prototype.doStep2 = function () {
             newNode.setWidth(1.2 * newNode.getWidth());
             newNode.setHeight(1.2 * newNode.getHeight());
         }
+
+        // !WARNING! = CoSE EXPECTS "id" PROPERTY IMPLICITLY, REMOVING IT WILL CAUSE TILING TO OCCUR ON THE WHOLE GRAPH
+        newNode.id = i;
 
         coseRoot.add(newNode);
         newCoSENodes.push(newNode);
@@ -1024,6 +1027,8 @@ CiSELayout.prototype.doStep2 = function () {
             coseEdgeToCiseEdges.get(newEdge).push(ciseEdge);
         }
     }
+
+    console.log(coseRoot);
 
     //this.reorderIncidentEdges(ciseNodeToCoseNode, coseEdgeToCiseEdges);
 
@@ -1205,6 +1210,27 @@ CiSELayout.prototype.prepareCirclesForReversal = function () {
             circle.computeOrderMatrix();
         }
     });
+};
+
+// This function returns the position data for all nodes
+CiSELayout.prototype.getPositionsData = function () {
+    var allNodes = this.graphManager.getAllNodes();
+    var pData = {};
+
+    for (var i = 0; i < allNodes.length; i++) {
+        var rect = allNodes[i].rect;
+        var id = allNodes[i].ID;
+
+        pData[id] = {
+            id: id,
+            x: rect.getCenterX(),
+            y: rect.getCenterY(),
+            w: rect.width,
+            h: rect.height
+        };
+    }
+
+    return pData;
 };
 
 module.exports = CiSELayout;
