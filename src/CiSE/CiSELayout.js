@@ -197,6 +197,9 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
         let circle = this.newCircleLGraph(null);
         this.graphManager.add(circle, clusterNode);
 
+        // Set bigger margins so clusters are spaced out nicely
+        circle.margin = circle.margin + 15;
+
         // Move each node of the cluster into this circle
         clusters[i].forEach(function(nodeID){
             let cytoNode = idToCytoscapeNode.get(nodeID);
@@ -525,8 +528,6 @@ CiSELayout.prototype.doStep2 = function(){
         }
     }
 
-    console.log(coseRoot);
-
     //this.reorderIncidentEdges(ciseNodeToCoseNode, coseEdgeToCiseEdges);
 
     // Run CoSELayout
@@ -707,7 +708,7 @@ CiSELayout.prototype.prepareCirclesForReversal = function()
     let nodes = this.graphManager.getRoot().getNodes();
     nodes.forEach(function(node){
         let circle = node.getChild();
-        if(circle !== null || circle !== undefined){
+        if(circle !== null && circle !== undefined){ //It is a circle
             if (circle.getInterClusterEdges().length < 2)
                 circle.setMayNotBeReversed();
 
@@ -715,30 +716,5 @@ CiSELayout.prototype.prepareCirclesForReversal = function()
         }
     });
 };
-
-// This function returns the position data for all nodes
-CiSELayout.prototype.getPositionsData = function()
-{
-    var allNodes = this.graphManager.getAllNodes();
-    var pData = {};
-
-    for (var i = 0; i < allNodes.length; i++)
-    {
-        var rect = allNodes[i].rect;
-        var id = allNodes[i].ID;
-
-        pData[id] = {
-            id: id,
-            x: rect.getCenterX(),
-            y: rect.getCenterY(),
-            w: rect.width,
-            h: rect.height
-        };
-    }
-
-    return pData;
-};
-
-
 
 module.exports = CiSELayout;

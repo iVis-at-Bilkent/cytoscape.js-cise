@@ -95,6 +95,46 @@ CiSEOnCircleNodeExt.prototype.setIndex = function(index)
     this.orderIndex = index;
 };
 
+/**
+ * This method returns the inter cluster edges of the associated node.
+ */
+CiSEOnCircleNodeExt.prototype.getInterClusterEdges = function()
+{
+    if(this.interClusterEdges === null){ //first time accessing
+        this.interClusterEdges = [];
+        let edgesOfNode = this.ciseNode.getEdges();
+        for(let i = 0; i < edgesOfNode.length; i++){
+            let edge = edgesOfNode[i];
+            if(!edge.isIntraCluster){
+                this.interClusterEdges.push(edge);
+            }
+        }
+
+    }
+
+    return this.interClusterEdges;
+};
+
+/**
+ * This method returns the intra cluster edges of the associated node.
+ */
+CiSEOnCircleNodeExt.prototype.getIntraClusterEdges = function()
+{
+    if(this.intraClusterEdges === null){ //first time accessing
+        this.intraClusterEdges = [];
+        let edgesOfNode = this.ciseNode.getEdges();
+        for(let i = 0; i < edgesOfNode.length; i++){
+            let edge = edgesOfNode[i];
+            if(edge.isIntraCluster){
+                this.intraClusterEdges.push(edge);
+            }
+        }
+
+    }
+
+    return this.intraClusterEdges;
+};
+
 
 
 module.exports = CiSEOnCircleNodeExt;

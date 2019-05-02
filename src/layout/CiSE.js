@@ -38,7 +38,6 @@ class Layout extends ContinuousLayout {
     // Construct the GraphManager according to the graph from Cytoscape
     this.idToLNode = ciseLayout.convertToClusteredGraph(nodes,edges,clusters);
 
-    // TODO What does these methods do really?
     //This method updates whether this graph is connected or not
     root.updateConnected();
     // This method calculates and returns the estimated size of this graph
@@ -50,6 +49,10 @@ class Layout extends ContinuousLayout {
     ciseLayout.doStep2();
 
     //root.setEstimatedSize(root.getBiggerDimension()); TODO Layout-base
+
+    ciseLayout.prepareCirclesForReversal();
+
+    console.log(graphManager);
   }
 
   // run this each iteraction
@@ -61,9 +64,9 @@ class Layout extends ContinuousLayout {
     state.nodes.forEach( n => {
       let s = this.getScratch(n);
 
-      let location = self.idToLNode[n.data('id')].getLocation();
-      s.x = location.x;
-      s.y = location.y;
+      let location = self.idToLNode[n.data('id')];
+      s.x = location.getCenterX();
+      s.y = location.getCenterY();
     });
 
     return isDone;

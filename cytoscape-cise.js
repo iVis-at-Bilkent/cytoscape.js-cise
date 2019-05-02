@@ -313,6 +313,10 @@ CiSECircle.prototype.getInCircleNodes = function () {
     return this.inCircleNodes;
 };
 
+CiSECircle.prototype.setMayNotBeReversed = function () {
+    this.mayBeReversed = false;
+};
+
 // This method calculates and sets dimensions of the parent node of this
 // circle. Parent node is centered to be at the same location of the
 // associated circle but its dimensions are larger than the circle by a
@@ -335,10 +339,84 @@ CiSECircle.prototype.calculateParentNodeDimension = function () {
         }
     }
 
-    var dimension = 2.0 * (self.radius + 15) + maxOnCircleNodeDimension;
+    var dimension = 2.0 * (self.radius + self.margin) + maxOnCircleNodeDimension;
     var parentNode = self.getParent();
     parentNode.setHeight(dimension);
     parentNode.setWidth(dimension);
+};
+
+/**
+ * This method returns the inter-cluster edges whose one end is in this
+ * cluster.
+ */
+CiSECircle.prototype.getInterClusterEdges = function () {
+    var self = this;
+
+    if (this.interClusterEdges === null) //If this is called the first time
+        {
+            this.interClusterEdges = [];
+            this.outNodes.forEach(function (node) {
+                var edgesToAdd = node.getOnCircleNodeExt().getInterClusterEdges();
+                for (var i = 0; i < edgesToAdd.length; i++) {
+                    self.interClusterEdges.push(edgesToAdd[i]);
+                }
+            });
+        }
+
+    return this.interClusterEdges;
+};
+
+/**
+ * This method returns the intra cluster edges of this circle
+ */
+CiSECircle.prototype.getIntraClusterEdges = function () {
+    var self = this;
+
+    if (this.intraClusterEdges === null) //If this is called the first time
+        {
+            this.intraClusterEdges = [];
+            var allEdges = this.getEdges();
+            allEdges.forEach(function (edge) {
+                if (edge.isIntraCluster) self.intraClusterEdges.push(edge);
+            });
+        }
+
+    return this.interClusterEdges;
+};
+
+/*
+ * This method computes the order matrix of this circle. This should be
+ * called only once at early stages of layout and is used to hold the order
+ * of on-circle nodes as specified.
+ */
+CiSECircle.prototype.computeOrderMatrix = function () {
+    var N = this.onCircleNodes.length;
+
+    // 'Two Dimensional array' (array of arrays in JS) with bool cell values
+    this.orderMatrix = new Array(N);
+    for (var i = 0; i < this.orderMatrix.length; i++) {
+        this.orderMatrix[i] = new Array(N);
+    }
+
+    for (var _i = 0; _i < N; _i++) {
+        for (var j = 0; j < N; j++) {
+            if (j > _i) {
+                var angleDiff = this.onCircleNodes[j].getOnCircleNodeExt().getAngle() - this.onCircleNodes[_i].getOnCircleNodeExt().getAngle();
+
+                if (angleDiff < 0) {
+                    angleDiff += IGeometry.TWO_PI;
+                }
+
+                if (angleDiff <= Math.PI) {
+                    this.orderMatrix[_i][j] = true;
+                    this.orderMatrix[j][_i] = false;
+                } else {
+                    this.orderMatrix[_i][j] = false;
+                    this.orderMatrix[j][_i] = true;
+                }
+            }
+        }
+    }
 };
 
 module.exports = CiSECircle;
@@ -706,6 +784,9 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
         var circle = _this.newCircleLGraph(null);
         _this.graphManager.add(circle, clusterNode);
 
+        // Set bigger margins so clusters are spaced out nicely
+        circle.margin = circle.margin + 15;
+
         // Move each node of the cluster into this circle
         clusters[_i].forEach(function (nodeID) {
             var cytoNode = idToCytoscapeNode.get(nodeID);
@@ -1028,8 +1109,6 @@ CiSELayout.prototype.doStep2 = function () {
         }
     }
 
-    console.log(coseRoot);
-
     //this.reorderIncidentEdges(ciseNodeToCoseNode, coseEdgeToCiseEdges);
 
     // Run CoSELayout
@@ -1204,33 +1283,13 @@ CiSELayout.prototype.prepareCirclesForReversal = function () {
     var nodes = this.graphManager.getRoot().getNodes();
     nodes.forEach(function (node) {
         var circle = node.getChild();
-        if (circle !== null || circle !== undefined) {
+        if (circle !== null && circle !== undefined) {
+            //It is a circle
             if (circle.getInterClusterEdges().length < 2) circle.setMayNotBeReversed();
 
             circle.computeOrderMatrix();
         }
     });
-};
-
-// This function returns the position data for all nodes
-CiSELayout.prototype.getPositionsData = function () {
-    var allNodes = this.graphManager.getAllNodes();
-    var pData = {};
-
-    for (var i = 0; i < allNodes.length; i++) {
-        var rect = allNodes[i].rect;
-        var id = allNodes[i].ID;
-
-        pData[id] = {
-            id: id,
-            x: rect.getCenterX(),
-            y: rect.getCenterY(),
-            w: rect.width,
-            h: rect.height
-        };
-    }
-
-    return pData;
 };
 
 module.exports = CiSELayout;
@@ -1423,6 +1482,44 @@ CiSEOnCircleNodeExt.prototype.setIndex = function (index) {
     this.orderIndex = index;
 };
 
+/**
+ * This method returns the inter cluster edges of the associated node.
+ */
+CiSEOnCircleNodeExt.prototype.getInterClusterEdges = function () {
+    if (this.interClusterEdges === null) {
+        //first time accessing
+        this.interClusterEdges = [];
+        var edgesOfNode = this.ciseNode.getEdges();
+        for (var i = 0; i < edgesOfNode.length; i++) {
+            var edge = edgesOfNode[i];
+            if (!edge.isIntraCluster) {
+                this.interClusterEdges.push(edge);
+            }
+        }
+    }
+
+    return this.interClusterEdges;
+};
+
+/**
+ * This method returns the intra cluster edges of the associated node.
+ */
+CiSEOnCircleNodeExt.prototype.getIntraClusterEdges = function () {
+    if (this.intraClusterEdges === null) {
+        //first time accessing
+        this.intraClusterEdges = [];
+        var edgesOfNode = this.ciseNode.getEdges();
+        for (var i = 0; i < edgesOfNode.length; i++) {
+            var edge = edgesOfNode[i];
+            if (edge.isIntraCluster) {
+                this.intraClusterEdges.push(edge);
+            }
+        }
+    }
+
+    return this.intraClusterEdges;
+};
+
 module.exports = CiSEOnCircleNodeExt;
 
 /***/ }),
@@ -1586,7 +1683,6 @@ var Layout = function (_ContinuousLayout) {
       // Construct the GraphManager according to the graph from Cytoscape
       this.idToLNode = ciseLayout.convertToClusteredGraph(nodes, edges, clusters);
 
-      // TODO What does these methods do really?
       //This method updates whether this graph is connected or not
       root.updateConnected();
       // This method calculates and returns the estimated size of this graph
@@ -1598,6 +1694,10 @@ var Layout = function (_ContinuousLayout) {
       ciseLayout.doStep2();
 
       //root.setEstimatedSize(root.getBiggerDimension()); TODO Layout-base
+
+      ciseLayout.prepareCirclesForReversal();
+
+      console.log(graphManager);
     }
 
     // run this each iteraction
@@ -1614,9 +1714,9 @@ var Layout = function (_ContinuousLayout) {
       state.nodes.forEach(function (n) {
         var s = _this2.getScratch(n);
 
-        var location = self.idToLNode[n.data('id')].getLocation();
-        s.x = location.x;
-        s.y = location.y;
+        var location = self.idToLNode[n.data('id')];
+        s.x = location.getCenterX();
+        s.y = location.getCenterY();
       });
 
       return isDone;

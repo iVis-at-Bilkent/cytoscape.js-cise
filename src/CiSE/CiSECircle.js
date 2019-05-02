@@ -109,6 +109,12 @@ CiSECircle.prototype.getInCircleNodes = function()
     return this.inCircleNodes;
 };
 
+CiSECircle.prototype.setMayNotBeReversed = function(){
+    this.mayBeReversed = false;
+};
+
+
+
 // This method calculates and sets dimensions of the parent node of this
 // circle. Parent node is centered to be at the same location of the
 // associated circle but its dimensions are larger than the circle by a
@@ -134,10 +140,96 @@ CiSECircle.prototype.calculateParentNodeDimension = function()
         }
     }
 
-    let dimension = 2.0 * (self.radius + 15) + maxOnCircleNodeDimension;
+    let dimension = 2.0 * (self.radius + self.margin) + maxOnCircleNodeDimension;
     let parentNode = self.getParent();
     parentNode.setHeight(dimension);
     parentNode.setWidth(dimension);
 };
+
+/**
+ * This method returns the inter-cluster edges whose one end is in this
+ * cluster.
+ */
+CiSECircle.prototype.getInterClusterEdges = function()
+{
+    let self = this;
+
+    if (this.interClusterEdges === null) //If this is called the first time
+    {
+        this.interClusterEdges = [];
+        this.outNodes.forEach(function (node) {
+            let edgesToAdd = node.getOnCircleNodeExt().getInterClusterEdges();
+            for(let i = 0; i < edgesToAdd.length; i++){
+                self.interClusterEdges.push(edgesToAdd[i]);
+            }
+        });
+    }
+
+    return this.interClusterEdges;
+};
+
+/**
+ * This method returns the intra cluster edges of this circle
+ */
+CiSECircle.prototype.getIntraClusterEdges = function()
+{
+    let self = this;
+
+    if (this.intraClusterEdges === null) //If this is called the first time
+    {
+        this.intraClusterEdges = [];
+        let allEdges = this.getEdges();
+        allEdges.forEach(function(edge){
+            if(edge.isIntraCluster)
+                self.intraClusterEdges.push(edge);
+        });
+    }
+
+    return this.interClusterEdges;
+};
+
+/*
+ * This method computes the order matrix of this circle. This should be
+ * called only once at early stages of layout and is used to hold the order
+ * of on-circle nodes as specified.
+ */
+CiSECircle.prototype.computeOrderMatrix = function () {
+    let N = this.onCircleNodes.length;
+
+    // 'Two Dimensional array' (array of arrays in JS) with bool cell values
+    this.orderMatrix = new Array(N);
+    for(let i = 0; i < this.orderMatrix.length; i++){
+        this.orderMatrix[i] = new Array(N);
+    }
+
+    for(let i = 0; i < N; i++){
+        for(let j = 0; j < N; j++){
+            if(j > i){
+                let angleDiff = this.onCircleNodes[j].getOnCircleNodeExt().getAngle() -
+                                this.onCircleNodes[i].getOnCircleNodeExt().getAngle();
+
+                if (angleDiff < 0)
+                {
+                    angleDiff += IGeometry.TWO_PI;
+                }
+
+                if (angleDiff <= Math.PI)
+                {
+                    this.orderMatrix[i][j] = true;
+                    this.orderMatrix[j][i] = false;
+                }
+                else
+                {
+                    this.orderMatrix[i][j] = false;
+                    this.orderMatrix[j][i] = true;
+                }
+            }
+        }
+    }
+
+
+};
+
+
 
 module.exports = CiSECircle;
