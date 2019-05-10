@@ -57,6 +57,7 @@
 					layout: {
 						name: 'cise',
 						DEFAULT_NODE_SEPARATION: 40,
+						during: true,
 						clusters: arrayOfClusterArrays
 					},
 					style: [
@@ -202,6 +203,61 @@
 		<h1>cytoscape-cise demo</h1>
 
 		<div id="cy"></div>
+
+		<div class='my-legend'>
+			<div class='legend-title'>Representation of Node Colors</div>
+			<div class='legend-scale'>
+				<ul class='legend-labels'>
+					<li><span style='background:#3a7ecf;'></span>Cluster #: 0</li>
+					<li><span style='background:#37CF47;'></span>Cluster #: 1</li>
+					<li><span style='background:#CF2727;'></span>Cluster #: 2</li>
+					<li><span style='background:#CA34CF;'></span>Cluster #: 3</li>
+					<li><span style='background:#CF7B13;'></span>Cluster #: 4</li>
+					<li><span style='background:#CFCE00;'></span>Cluster #: 5</li>
+					<li><span style='background:#756D76;'></span>Unclustered</li>
+				</ul>
+			</div>
+		</div>
+
+		<style type='text/css'>
+			.my-legend .legend-title {
+				text-align: right;
+				margin-bottom: 5px;
+				font-weight: bold;
+				font-size: 90%;
+			}
+			.my-legend .legend-scale ul {
+				margin: 0;
+				margin-right: 80px;
+				padding: 0;
+				float: right;
+				list-style: none;
+			}
+			.my-legend .legend-scale ul li {
+				font-size: 80%;
+				list-style: none;
+				margin-left: 0;
+				line-height: 18px;
+				margin-bottom: 2px;
+			}
+			.my-legend ul.legend-labels li span {
+				display: block;
+				float: left;
+				height: 16px;
+				width: 30px;
+				margin-right: 5px;
+				margin-left: 0;
+				border: 1px solid #999;
+			}
+			.my-legend .legend-source {
+				font-size: 70%;
+				color: #999;
+				clear: both;
+			}
+			.my-legend a {
+				color: #777;
+			}
+		</style>
 
 	</body>
 

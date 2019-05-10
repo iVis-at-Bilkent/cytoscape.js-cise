@@ -19,7 +19,42 @@ class Layout extends ContinuousLayout {
   constructor( options ){
     super( assign( {}, defaults, options ) );
 
-  CiSEConstants.DEFAULT_NODE_SEPARATION = options.DEFAULT_NODE_SEPARATION;
+    this.defaultSettings = [ CiSEConstants.DEFAULT_SPRING_STRENGTH,
+                             CiSEConstants.DEFAULT_NODE_SEPARATION,
+                             CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF,
+                             CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE,
+                             CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE
+    ];
+
+    //Changing CiSEConstants if there is a particular option defined in 'options'
+    if(options.DEFAULT_SPRING_STRENGTH !== null && options.DEFAULT_SPRING_STRENGTH !== undefined)
+      CiSEConstants.DEFAULT_SPRING_STRENGTH = options.DEFAULT_SPRING_STRENGTH;
+    else
+      CiSEConstants.DEFAULT_SPRING_STRENGTH = this.defaultSettings[0];
+
+    if(options.DEFAULT_NODE_SEPARATION !== null && options.DEFAULT_NODE_SEPARATION !== undefined)
+      CiSEConstants.DEFAULT_NODE_SEPARATION = options.DEFAULT_NODE_SEPARATION;
+    else
+      CiSEConstants.DEFAULT_NODE_SEPARATION = this.defaultSettings[1];
+
+    if(options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== null &&
+      options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== undefined)
+      CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF;
+    else
+      CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = this.defaultSettings[2];
+
+    if(options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== undefined)
+      CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE;
+    else
+      CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = this.defaultSettings[3];
+
+    if(options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== undefined)
+      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE;
+    else
+      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = this.defaultSettings[4];
+
+    // This is for letting CiSELayout to know if it is going to be animated
+    CiSEConstants.INCREMENTAL = this.state.animateEnd;
   }
 
   prerun(){
@@ -48,19 +83,18 @@ class Layout extends ContinuousLayout {
     ciseLayout.doStep1();
     ciseLayout.doStep2();
 
-    //root.setEstimatedSize(root.getBiggerDimension()); TODO Layout-base
-
+    // TODO Layout-base -- root.setEstimatedSize(root.getBiggerDimension());
     ciseLayout.prepareCirclesForReversal();
-
-    console.log(graphManager);
+    ciseLayout.calcIdealEdgeLengths(false);
   }
 
   // run this each iteraction
   tick(){
+    // Getting References
     let self = this;
     let state = this.state;
-    let isDone = true;
 
+    // Update Each Node Locations
     state.nodes.forEach( n => {
       let s = this.getScratch(n);
 
@@ -69,7 +103,7 @@ class Layout extends ContinuousLayout {
       s.y = location.getCenterY();
     });
 
-    return isDone;
+    return true;
   }
 
   // run this function after the layout is done ticking

@@ -19,6 +19,8 @@ for( let prop in FDLayoutConstants)
 // Section: CiSE layout user options
 // -----------------------------------------------------------------------------
 
+CiSEConstants.INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL;
+
 CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
 
 // Amount of separation of nodes on the associated circle

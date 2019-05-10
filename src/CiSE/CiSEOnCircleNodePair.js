@@ -9,11 +9,6 @@
 
 function CiSEOnCircleNodePair(first, second, displacement, inSameDirection)
 {
-    if(first.getOnCircleNodeExt() !== null && second.getOnCircleNodeExt() != null)
-    {
-        throw "the nodes in a pair must be onCircle nodes!!";
-    }
-
     // The node of the pair which comes first in the ordering of its owner
     // circle.
     this.firstNode = first;
@@ -58,11 +53,44 @@ CiSEOnCircleNodePair.prototype.getSecondNode = function()
     return this.secondNode;
 };
 
-
 // -----------------------------------------------------------------------------
 // Section: Remaining methods
 // -----------------------------------------------------------------------------
 
+CiSEOnCircleNodePair.prototype.compareTo = function(other){
+    return this.getDiscrepancy() - other.getDiscrepancy();
+};
+
+CiSEOnCircleNodePair.prototype.swap = function(){
+    this.getFirstNode().getOnCircleNodeExt().swapWith(this.getSecondNode().getOnCircleNodeExt());
+};
+
+CiSEOnCircleNodePair.prototype.equals = function(other){
+    let result = other instanceof  CiSEOnCircleNodePair;
+
+    if(result){
+        let pair = other;
+
+        result &= (this.firstNode.equals(pair.getFirstNode()) &&
+                  this.secondNode.equals(pair.getSecondNode())) ||
+                 (this.secondNode.equals(pair.getFirstNode()) &&
+                  this.firstNode.equals(pair.getSecondNode()));
+    }
+
+    return result;
+};
+
+CiSEOnCircleNodePair.prototype.hashCode = function(){
+    return this.firstNode.hashCode() + this.secondNode.hashCode();
+};
+
+CiSEOnCircleNodePair.prototype.toString = function () {
+    let result = "Swap: " + this.getFirstNode().label;
+    result += "<->"+ this.getSecondNode().label;
+    result +=", "+ this.getDiscrepancy();
+
+    return result;
+};
 
 module.exports = CiSEOnCircleNodePair;
 

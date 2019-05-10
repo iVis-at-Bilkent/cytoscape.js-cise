@@ -48,6 +48,11 @@ function CiSELayout()
     Layout.call(this);
 
     /**
+     * Whether it is incremental
+     */
+    this.incremental = CiSEConstants.INCREMENTAL;
+
+    /**
      * Separation of the nodes on each circle customizable by the user
      */
     this.nodeSeparation = CiSEConstants.DEFAULT_NODE_SEPARATION;
@@ -559,6 +564,44 @@ CiSELayout.prototype.doStep2 = function(){
 };
 
 /**
+ * This method runs a modified spring embedder as described by the CiSE
+ * layout algorithm where the on-circle nodes are fixed (pinned down to
+ * the location on their owner circle). Circles, however, are allowed to be
+ * flipped (i.e. nodes are re-ordered in the reverse direction) if reversal
+ * yields a better aligned neighborhood (w.r.t. its inter-graph edges).
+ */
+CiSELayout.prototype.Step3Init = function(){
+    this.step = CiSELayout.STEP_3;
+    this.phase = CiSELayout.PHASE_OTHER;
+    this.initSpringEmbedder();
+};
+
+/**
+ * This method runs a modified spring embedder as described by the CiSE
+ * layout algorithm where the neighboring on-circle nodes are allowed to
+ * move by swapping without increasing crossing number but circles are not
+ * allowed to be flipped.
+ */
+CiSELayout.prototype.Step4Init = function() {
+    this.step = CiSELayout.STEP_4;
+    this.phase = CiSELayout.PHASE_OTHER;
+    this.initSpringEmbedder();
+};
+
+/**
+ * This method runs a modified spring embedder as described by the CiSE
+ * layout algorithm where the on-circle nodes are fixed (pinned down to
+ * the location on their owner circle) and circles are not allowed to be
+ * flipped.
+ */
+CiSELayout.prototype.Step5Init = function(){
+    this.step = CiSELayout.STEP_5;
+    this.phase = CiSELayout.PHASE_OTHER;
+    this.initSpringEmbedder();
+};
+
+
+/**
  * This method sorts incident lists of cose nodes created earlier according
  * to node ordering inside corresponding cise circles, if any. For each cose
  * edge we have one or possibly more cise edges. Let's look up their indices
@@ -703,8 +746,6 @@ CiSELayout.prototype.reorderIncidentEdges = function(ciseNodeToCoseNode, coseEdg
 
 CiSELayout.prototype.prepareCirclesForReversal = function()
 {
-    let self = this;
-
     let nodes = this.graphManager.getRoot().getNodes();
     nodes.forEach(function(node){
         let circle = node.getChild();
@@ -716,5 +757,173 @@ CiSELayout.prototype.prepareCirclesForReversal = function()
         }
     });
 };
+
+/**
+ * This method calculates the ideal edge length of each edge. Here we relax
+ * edge lengths in the polishing step and keep the edge lengths of the edges
+ * incident with inner-nodes very short to avoid overlaps.
+ */
+CiSELayout.prototype.calcIdealEdgeLengths = function(isPolishingStep){
+    let lEdges = this.graphManager.getAllEdges();
+    for(let i = 0; i < lEdges.length; i++){
+        let edge = lEdges[i];
+
+        // TODO Another calculation is in Chilay comments
+        // Loosen in the polishing step to avoid overlaps
+        if(isPolishingStep)
+            edge.idealLength = 1.5 * this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;
+        else
+            edge.idealLength = this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;
+    }
+
+    // Update in-nodes edge's lengths
+    let lNodes = this.graphManager.getInCircleNodes();
+    for(let i = 0; i < lNodes.length; i++){
+        let node = lNodes[i];
+
+        node.getEdges().forEach(function (edge){
+            edge.idealLength = CiSEConstants.DEFAULT_INNER_EDGE_LENGTH;
+        });
+    }
+};
+
+/**
+ * This method calculates the spring forces applied to end nodes of each
+ * edge. In steps 3 & 5, where on-circle nodes are not allowed to move,
+ * intra-cluster edges are ignored (as their total will equal zero and won't
+ * have an affect on the owner circle).
+ */
+CiSELayout.prototype.calcSpringForces = function(){
+    let lEdges = this.graphManager.getAllEdges();
+    for(let i = 0; i < lEdges.length; i++){
+        let edge = lEdges[i];
+        let source = edge.getSource();
+        let target = edge.getTarget();
+
+        // Ignore intra-cluster edges (all steps 3 thru 5) except for those
+        // incident w/ any inner-nodes
+        if (edge.isIntraCluster &&
+            source.getOnCircleNodeExt() != null &&
+            target.getOnCircleNodeExt() != null)
+        {
+            continue;
+        }
+
+        this.calcSpringForce(edge, edge.idealLength);
+    }
+};
+
+/**
+ * This method calculates the repulsion forces for each pair of nodes.
+ * Repulsions need not be calculated for on-circle nodes.
+ */
+CiSELayout.prototype.calcRepulsionForces = function() {
+    let lNodes = this.graphManager.getNonOnCircleNodes();
+    for(let i = 0; i < lNodes.length; i++){
+        let nodeA = lNodes[i];
+        for(let j = i + 1; j < lNodes.length; j++){
+            let nodeB = lNodes[j];
+
+            this.calcRepulsionForce(nodeA, nodeB);
+        }
+    }
+
+    // We need the calculate repulsion forces for in-circle nodes as well
+    // to keep them inside circle.
+    let inCircleNodes = this.graphManager.getInCircleNodes();
+    for (let i = 0; i < inCircleNodes.length; i++) {
+        let inCircleNode = inCircleNodes[i];
+        let ownerCircle = inCircleNode.getOwner();
+
+        //TODO: inner nodes repulse on-circle nodes as well, not desired!
+        // Calculate repulsion forces with all nodes inside the owner circle
+        // of this inner node.
+
+        let childNodes = ownerCircle.getNodes();
+        for(let i = 0; i < childNodes.length; i++){
+            let childCiSENode = childNodes[i];
+
+            if (childCiSENode != inCircleNode)
+            {
+                this.calcRepulsionForce(inCircleNode, childCiSENode);
+            }
+        }
+    }
+};
+
+/**
+ * This method calculates the gravitational forces for each node. On-circle
+ * nodes move with their owner; thus they are not applied separate gravity.
+ */
+CiSELayout.prototype.calcGravitationalForces = function () {
+    if (!this.getGraphManager().getRoot().isConnected()) {
+        let lNodes = this.graphManager.getNonOnCircleNodes();
+
+        for (let i = 0; i < lNodes.length; i++)
+        {
+            let node = lNodes[i];
+            this.calcGravitationalForce(node);
+        }
+    }
+
+    // Calculate gravitational forces to keep in-circle nodes in the center
+    // TODO: is this really helping or necessary?
+    let lNodes = this.getInCircleNodes();
+
+    for (let i = 0; i < lNodes.length; i++)
+    {
+        let node = lNodes[i];
+        this.calcGravitationalForce(node);
+    }
+};
+
+/**
+ * This method adds up all the forces calculated earlier transferring forces
+ * of on-circle nodes to their owner node (as regular and rotational forces)
+ * when they are not allowed to move. When they are allowed to move,
+ * on-circle nodes will partially contribute to the forces of their owner
+ * circle (no rotational contribution).
+ */
+CiSELayout.prototype.calcTotalForces = function(){
+    let allNodes = this.graphManager.getAllNodes();
+
+    for(let i = 0; i < allNodes.length; i++){
+        let node = allNodes[i];
+
+        node.displacementX = this.coolingFactor * (node.springForceX + node.repulsionForceX + node.gravitationForceX);
+        node.displacementY = this.coolingFactor * (node.springForceY + node.repulsionForceY + node.gravitationForceY);
+        node.rotationAmount = 0.0;
+
+        node.springForceX = 0.0;
+        node.springForceY = 0.0;
+        node.repulsionForceX = 0.0;
+        node.repulsionForceY = 0.0;
+        node.gravitationForceX = 0.0;
+        node.gravitationForceY = 0.0;
+    }
+
+    let onCircleNodes = this.graphManager.getOnCircleNodes();
+    for (let i = 0; i < onCircleNodes.length; i++)
+    {
+        let node = onCircleNodes[i];
+        let parentNode = node.getOwner().getParent();
+        let values = node.getOwner().decomposeForce(node);
+
+        if(this.phase === CiSELayout.PHASE_SWAP_PREPERATION){
+            node.getOnCircleNodeExt().addDisplacementForSwap(values.getRotationAmount());
+        }
+
+        parentNode.displacementX += values.getDisplacementX();
+        parentNode.displacementY += values.getDisplacementY();
+        node.displacementX = 0.0;
+        node.displacementY = 0.0;
+
+        parentNode.rotationAmount += values.getRotationAmount();
+        node.rotationAmount = 0.0;
+    }
+};
+
+
+
 
 module.exports = CiSELayout;

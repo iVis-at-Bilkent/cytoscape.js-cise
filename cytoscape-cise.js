@@ -108,6 +108,8 @@ for (var prop in FDLayoutConstants) {
 // Section: CiSE layout user options
 // -----------------------------------------------------------------------------
 
+CiSEConstants.INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL;
+
 CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
 
 // Amount of separation of nodes on the associated circle
@@ -317,32 +319,14 @@ CiSECircle.prototype.setMayNotBeReversed = function () {
     this.mayBeReversed = false;
 };
 
-// This method calculates and sets dimensions of the parent node of this
-// circle. Parent node is centered to be at the same location of the
-// associated circle but its dimensions are larger than the circle by a
-// factor (must be >= 1 to ensure all nodes are enclosed within its
-// rectangle) of the largest dimension (width or height) of on-circle nodes
-// so that it completely encapsulates the nodes on this circle.
-CiSECircle.prototype.calculateParentNodeDimension = function () {
-    var self = this;
+// This method returns whether or not this circle has been reversed.
+CiSECircle.prototype.mayBeReversed = function () {
+    return this.mayBeReversed;
+};
 
-    var maxOnCircleNodeDimension = Number.MIN_SAFE_INTEGER;
-
-    for (var i = 0; i < this.onCircleNodes.length; i++) {
-        var node = this.onCircleNodes[i];
-
-        if (node.getWidth() > maxOnCircleNodeDimension) {
-            maxOnCircleNodeDimension = node.getWidth();
-        }
-        if (node.getHeight() > maxOnCircleNodeDimension) {
-            maxOnCircleNodeDimension = node.getHeight();
-        }
-    }
-
-    var dimension = 2.0 * (self.radius + self.margin) + maxOnCircleNodeDimension;
-    var parentNode = self.getParent();
-    parentNode.setHeight(dimension);
-    parentNode.setWidth(dimension);
+// This method downcasts and returns the child at given index.
+CiSECircle.prototype.getChildAt = function (index) {
+    return this.onCircleNodes[index];
 };
 
 /**
@@ -384,6 +368,38 @@ CiSECircle.prototype.getIntraClusterEdges = function () {
     return this.interClusterEdges;
 };
 
+// -----------------------------------------------------------------------------
+// Section: Other methods
+// -----------------------------------------------------------------------------
+
+// This method calculates and sets dimensions of the parent node of this
+// circle. Parent node is centered to be at the same location of the
+// associated circle but its dimensions are larger than the circle by a
+// factor (must be >= 1 to ensure all nodes are enclosed within its
+// rectangle) of the largest dimension (width or height) of on-circle nodes
+// so that it completely encapsulates the nodes on this circle.
+CiSECircle.prototype.calculateParentNodeDimension = function () {
+    var self = this;
+
+    var maxOnCircleNodeDimension = Number.MIN_SAFE_INTEGER;
+
+    for (var i = 0; i < this.onCircleNodes.length; i++) {
+        var node = this.onCircleNodes[i];
+
+        if (node.getWidth() > maxOnCircleNodeDimension) {
+            maxOnCircleNodeDimension = node.getWidth();
+        }
+        if (node.getHeight() > maxOnCircleNodeDimension) {
+            maxOnCircleNodeDimension = node.getHeight();
+        }
+    }
+
+    var dimension = 2.0 * (self.radius + self.margin) + maxOnCircleNodeDimension;
+    var parentNode = self.getParent();
+    parentNode.setHeight(dimension);
+    parentNode.setWidth(dimension);
+};
+
 /*
  * This method computes the order matrix of this circle. This should be
  * called only once at early stages of layout and is used to hold the order
@@ -419,6 +435,214 @@ CiSECircle.prototype.computeOrderMatrix = function () {
     }
 };
 
+/**
+ * This method rotates this circle by iterating over and adjusting the
+ * relative positioning of all nodes on this circle by the calculated angle
+ * with respect to the rotation amount of the owner node.
+ */
+CiSECircle.prototype.rotate = function () {
+    // Take size into account when reflecting total force into rotation!
+    var parentNode = this.getParent();
+    var noOfNodes = this.getOnCircleNodes().length;
+    var rotationAmount = parentNode.rotationAmount / noOfNodes; // Think about the momentum
+    var layout = this.getGraphManager().getLayout();
+
+    if (rotationAmount !== 0.0) {
+        // The angle (θ) of rotation applied to each node
+        var theta = rotationAmount / this.radius;
+
+        if (theta > CiSEConstants.MAX_ROTATION_ANGLE) theta = CiSEConstants.MAX_ROTATION_ANGLE;else if (theta < CiSEConstants.MIN_ROTATION_ANGLE) theta = CiSEConstants.MIN_ROTATION_ANGLE;
+
+        for (var i = 0; i < noOfNodes; i++) {
+            var onCircleNode = this.getChildAt(i);
+            var onCircleNodeExt = onCircleNode.getOnCircleNodeExt();
+            onCircleNodeExt.setAngle(onCircleNodeExt.getAngle() + theta); // Change the angle
+            onCircleNodeExt.updatePosition(); // Apply the above angle change to its position
+        }
+
+        // Update CiSELayout displacement
+        layout.totalDisplacement += parentNode.rotationAmount;
+
+        // Reset rotationAmount
+        parentNode.rotationAmount = 0.0;
+    }
+};
+
+/**
+ * This method returns the pairwise order of the input nodes as computed and
+ * held in orderMatrix.
+ */
+CiSECircle.prototype.getOrder = function (nodeA, nodeB) {
+    return this.orderMatrix[nodeA.getOnCircleNodeExt().getIndex()][nodeB.getOnCircleNodeExt().getIndex()];
+};
+
+/**
+ * This method gets the end node of the input inter-cluster edge in this
+ * cluster.
+ */
+CiSECircle.prototype.getThisEnd = function (edge) {
+    var sourceNode = edge.getSource();
+    var targetNode = edge.getTarget();
+
+    if (sourceNode.getOwner() === this) return sourceNode;else return targetNode;
+};
+
+/**
+ * This method gets the end node of the input inter-cluster edge not in this
+ * cluster.
+ */
+CiSECircle.prototype.getOtherEnd = function (edge) {
+    var sourceNode = edge.getSource();
+    var targetNode = edge.getTarget();
+
+    if (sourceNode.getOwner() === this) return targetNode;else return sourceNode;
+};
+
+/**
+ * This method calculates and returns rotational and translational parts of
+ * the total force calculated for the given node. The translational part is
+ * composed of components in x and y directions.
+ */
+CiSECircle.prototype.decomposeForce = function (node) {
+    var circularForce = void 0;
+
+    if (node.displacementX !== 0.0 || node.displacementY !== 0.0) {
+        var ownerNode = this.getParent();
+
+        var Cx = ownerNode.getCenterX();
+        var Cy = ownerNode.getCenterY();
+        var Nx = node.getCenterX();
+        var Ny = node.getCenterY();
+        var Fx = node.displacementX;
+        var Fy = node.displacementY;
+
+        var C_angle = IGeometry.angleOfVector(Cx, Cy, Nx, Ny);
+        var F_angle = IGeometry.angleOfVector(0.0, 0.0, Fx, Fy);
+        var C_rev_angle = C_angle + Math.PI;
+
+        // Check whether F lies between C and its opposite angle C-reverse;
+        // if so, rotation is +ve (clockwise); otherwise, it's -ve.
+        // We handle angles greater than 360 specially in the else part.
+        var isRotationClockwise = void 0;
+        if (Math.PI <= C_rev_angle && C_rev_angle < IGeometry.TWO_PI) {
+            if (C_angle <= F_angle && F_angle < C_rev_angle) {
+                isRotationClockwise = true;
+            } else {
+                isRotationClockwise = false;
+            }
+        } else {
+            C_rev_angle -= IGeometry.TWO_PI;
+
+            if (C_rev_angle <= F_angle && F_angle < C_angle) {
+                isRotationClockwise = false;
+            } else {
+                isRotationClockwise = true;
+            }
+        }
+
+        var angle_diff = Math.abs(C_angle - F_angle);
+        var F_magnitude = Math.sqrt(Fx * Fx + Fy * Fy);
+        var R_magnitude = Math.abs(Math.sin(angle_diff) * F_magnitude);
+
+        if (!isRotationClockwise) {
+            R_magnitude = -R_magnitude;
+        }
+
+        circularForce = new CircularForce(R_magnitude, Fx, Fy);
+    } else {
+        circularForce = new CircularForce(0.0, 0.0, 0.0);
+    }
+
+    return circularForce;
+};
+
+/**
+ * This method swaps the nodes given as parameter and make necessary angle
+ * and positioning updates.
+ */
+CiSECircle.prototype.swapNodes = function (first, second) {
+    // Determine which node has smaller index
+    var smallIndexNode = first;
+    var bigIndexNode = second;
+    var firstExt = first.getOnCircleNodeExt();
+    var secondExt = second.getOnCircleNodeExt();
+
+    if (smallIndexNode.getOnCircleNodeExt().getIndex() > second.getOnCircleNodeExt().getIndex()) {
+        smallIndexNode = second;
+        bigIndexNode = first;
+    }
+
+    // Check the exceptional case where the small index node is at 0 index
+    // and the big index node is at the last index of the circle. In this
+    // case, we treat smaller index node as bigger index node and vice versa
+    if (smallIndexNode.getOnCircleNodeExt().getPrevNode() === bigIndexNode) {
+        var tempNode = bigIndexNode;
+        bigIndexNode = smallIndexNode;
+        smallIndexNode = tempNode;
+    }
+
+    var smallIndexNodeExt = smallIndexNode.getOnCircleNodeExt();
+    var bigIndexNodeExt = bigIndexNode.getOnCircleNodeExt();
+
+    // Calculate the angle for the big index node
+    var smallIndexPrevNode = smallIndexNodeExt.getPrevNode();
+
+    var layout = this.getGraphManager().getLayout();
+    var nodeSeparation = layout.getNodeSeparation();
+
+    var angle = (smallIndexPrevNode.getOnCircleNodeExt().getAngle() + (smallIndexPrevNode.getHalfTheDiagonal() + bigIndexNode.getHalfTheDiagonal() + nodeSeparation) / this.radius) % (2 * Math.PI);
+
+    bigIndexNodeExt.setAngle(angle);
+
+    // Calculate the angle for the small index node
+    angle = (bigIndexNodeExt.getAngle() + (bigIndexNode.getHalfTheDiagonal() + smallIndexNode.getHalfTheDiagonal() + nodeSeparation) / this.radius) % (2 * Math.PI);
+
+    smallIndexNodeExt.setAngle(angle);
+
+    smallIndexNodeExt.updatePosition();
+    bigIndexNodeExt.updatePosition();
+
+    var tempIndex = firstExt.getIndex();
+    firstExt.setIndex(secondExt.getIndex());
+    secondExt.setIndex(tempIndex);
+    this.getOnCircleNodes()[firstExt.getIndex()] = first;
+    this.getOnCircleNodes()[secondExt.getIndex()] = second;
+
+    firstExt.updateSwappingConditions();
+    secondExt.updateSwappingConditions();
+
+    if (firstExt.getNextNode() === second) {
+        firstExt.getPrevNode().getOnCircleNodeExt().updateSwappingConditions();
+        secondExt.getNextNode().getOnCircleNodeExt().updateSwappingConditions();
+    } else {
+        firstExt.getNextNode().getOnCircleNodeExt().updateSwappingConditions();
+        secondExt.getPrevNode().getOnCircleNodeExt().updateSwappingConditions();
+    }
+};
+
+/*
+ * This method checks to see for each cluster (in no particular order)
+ * whether or not reversing the order of the cluster would reduce
+ * inter-cluster edge crossings. The decision is based on global sequence
+ * alignment of the order of the nodes in the cluster vs. the order of their
+ * neighbors in other clusters. A cluster that was reversed earlier is not
+ * reversed again to avoid oscillations. It returns true if reverse order
+ * is adapted.
+ */
+CiSECircle.prototype.checkAndReverseIfReverseIsBetter = function () {
+    // First form the list of inter cluster edges of this cluster
+    var interClusterEdges = this.getInterClusterEdges();
+    var interClusterEdgeInfos = [];
+
+    // Now form the info array that contains not only the inter-cluster
+    // edges but also other information such as the angle they make w.r.t.
+    // the cluster center and neighboring node center.
+    // In the meantime, calculate how many inter-cluster edge each on-circle
+    // node is incident with. This information will be used to duplicate
+    // char codes of those nodes with 2 or more inter-graph edge.
+
+};
+
 module.exports = CiSECircle;
 
 /***/ }),
@@ -444,26 +668,93 @@ var FDLayoutEdge = __webpack_require__(0).layoutBase.FDLayoutEdge;
 
 // Constructor
 function CiSEEdge(source, target, vEdge) {
-  FDLayoutEdge.call(this, source, target, vEdge);
+    FDLayoutEdge.call(this, source, target, vEdge);
 
-  /**
-   * Flag for inter-graph edges in the base is not good enough. So we define
-   * this one to mean: a CiSE edge is intra-cluster only if both its ends are
-   * on a common circle; not intra-cluster, otherwise!
-   */
-  this.isIntraCluster = true;
+    /**
+     * Flag for inter-graph edges in the base is not good enough. So we define
+     * this one to mean: a CiSE edge is intra-cluster only if both its ends are
+     * on a common circle; not intra-cluster, otherwise!
+     */
+    this.isIntraCluster = true;
 }
 
 CiSEEdge.prototype = Object.create(FDLayoutEdge.prototype);
 
 for (var property in FDLayoutEdge) {
-  CiSEEdge[property] = FDLayoutEdge[property];
+    CiSEEdge[property] = FDLayoutEdge[property];
 }
 
 // -----------------------------------------------------------------------------
 // Section: Remaining methods
 // -----------------------------------------------------------------------------
 
+/**
+ * This method checks whether this edge crosses with the input edge. It
+ * returns false, if any of the vertices those edges are incident to are
+ * not yet placed on the circle.
+ */
+CiSEEdge.prototype.crossesWithEdge = function (other) {
+    var result = false;
+    var sourceExt = this.getSource().getOnCircleNodeExt();
+    var targetExt = this.getTarget().getOnCircleNodeExt();
+    var otherSourceExt = other.getSource().getOnCircleNodeExt();
+    var otherTargetExt = other.getTarget().getOnCircleNodeExt();
+    var sourcePos = -1;
+    var targetPos = -1;
+    var otherSourcePos = -1;
+    var otherTargetPos = -1;
+
+    if (sourceExt !== null) sourcePos = sourceExt.getIndex();
+
+    if (targetExt !== null) targetPos = targetExt.getIndex();
+
+    if (otherSourceExt !== null) otherSourcePos = otherSourceExt.getIndex();
+
+    if (otherTargetExt !== null) otherTargetPos = otherTargetExt.getIndex();
+
+    if (!this.isInterGraph && !other.isInterGraph) {
+        if (this.source.getOwner() !== this.target.getOwner()) result = false;else {
+            // if any of the vertices those two edges are not yet placed
+            if (sourcePos === -1 || targetPos === -1 || otherSourcePos === -1 || otherTargetPos === -1) result = false;
+
+            var otherSourceDist = otherSourceExt.getCircDistWithTheNode(sourceExt);
+            var otherTargetDist = otherTargetExt.getCircDistWithTheNode(sourceExt);
+            var thisTargetDist = targetExt.getCircDistWithTheNode(sourceExt);
+
+            if (thisTargetDist < Math.max(otherSourceDist, otherTargetDist) && thisTargetDist > Math.min(otherSourceDist, otherTargetDist) && otherTargetDist !== 0 && otherSourceDist !== 0) {
+                result = true;
+            }
+        }
+    } else {
+        result = true;
+    }
+
+    return result;
+};
+
+/**
+ * This method calculates the total number of crossings of this edge with
+ * all the edges given in the input list.
+ */
+CiSEEdge.prototype.calculateTotalCrossingWithList = function (edgeList) {
+    var totalCrossing = 0;
+    for (var i = 0; i < edgeList.length; i++) {
+        totalCrossing += this.crossingWithEdge(edgeList[i]);
+    }return totalCrossing;
+};
+
+/**
+ * This method returns 1 if this edge crosses with the input edge, 0
+ * otherwise.
+ */
+CiSEEdge.prototype.crossingWithEdge = function (other) {
+    var crosses = this.crossesWithEdge(other);
+    var result = 0;
+
+    if (crosses) result = 1;
+
+    return result;
+};
 
 module.exports = CiSEEdge;
 
@@ -636,6 +927,11 @@ var CoSEConstants = __webpack_require__(3).CoSEConstants;
 // Constructor
 function CiSELayout() {
     Layout.call(this);
+
+    /**
+     * Whether it is incremental
+     */
+    this.incremental = CiSEConstants.INCREMENTAL;
 
     /**
      * Separation of the nodes on each circle customizable by the user
@@ -1137,6 +1433,43 @@ CiSELayout.prototype.doStep2 = function () {
 };
 
 /**
+ * This method runs a modified spring embedder as described by the CiSE
+ * layout algorithm where the on-circle nodes are fixed (pinned down to
+ * the location on their owner circle). Circles, however, are allowed to be
+ * flipped (i.e. nodes are re-ordered in the reverse direction) if reversal
+ * yields a better aligned neighborhood (w.r.t. its inter-graph edges).
+ */
+CiSELayout.prototype.Step3Init = function () {
+    this.step = CiSELayout.STEP_3;
+    this.phase = CiSELayout.PHASE_OTHER;
+    this.initSpringEmbedder();
+};
+
+/**
+ * This method runs a modified spring embedder as described by the CiSE
+ * layout algorithm where the neighboring on-circle nodes are allowed to
+ * move by swapping without increasing crossing number but circles are not
+ * allowed to be flipped.
+ */
+CiSELayout.prototype.Step4Init = function () {
+    this.step = CiSELayout.STEP_4;
+    this.phase = CiSELayout.PHASE_OTHER;
+    this.initSpringEmbedder();
+};
+
+/**
+ * This method runs a modified spring embedder as described by the CiSE
+ * layout algorithm where the on-circle nodes are fixed (pinned down to
+ * the location on their owner circle) and circles are not allowed to be
+ * flipped.
+ */
+CiSELayout.prototype.Step5Init = function () {
+    this.step = CiSELayout.STEP_5;
+    this.phase = CiSELayout.PHASE_OTHER;
+    this.initSpringEmbedder();
+};
+
+/**
  * This method sorts incident lists of cose nodes created earlier according
  * to node ordering inside corresponding cise circles, if any. For each cose
  * edge we have one or possibly more cise edges. Let's look up their indices
@@ -1278,8 +1611,6 @@ CiSELayout.prototype.reorderIncidentEdges = function (ciseNodeToCoseNode, coseEd
  */
 
 CiSELayout.prototype.prepareCirclesForReversal = function () {
-    var self = this;
-
     var nodes = this.graphManager.getRoot().getNodes();
     nodes.forEach(function (node) {
         var circle = node.getChild();
@@ -1290,6 +1621,161 @@ CiSELayout.prototype.prepareCirclesForReversal = function () {
             circle.computeOrderMatrix();
         }
     });
+};
+
+/**
+ * This method calculates the ideal edge length of each edge. Here we relax
+ * edge lengths in the polishing step and keep the edge lengths of the edges
+ * incident with inner-nodes very short to avoid overlaps.
+ */
+CiSELayout.prototype.calcIdealEdgeLengths = function (isPolishingStep) {
+    var lEdges = this.graphManager.getAllEdges();
+    for (var i = 0; i < lEdges.length; i++) {
+        var edge = lEdges[i];
+
+        // TODO Another calculation is in Chilay comments
+        // Loosen in the polishing step to avoid overlaps
+        if (isPolishingStep) edge.idealLength = 1.5 * this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;else edge.idealLength = this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;
+    }
+
+    // Update in-nodes edge's lengths
+    var lNodes = this.graphManager.getInCircleNodes();
+    for (var _i13 = 0; _i13 < lNodes.length; _i13++) {
+        var node = lNodes[_i13];
+
+        node.getEdges().forEach(function (edge) {
+            edge.idealLength = CiSEConstants.DEFAULT_INNER_EDGE_LENGTH;
+        });
+    }
+};
+
+/**
+ * This method calculates the spring forces applied to end nodes of each
+ * edge. In steps 3 & 5, where on-circle nodes are not allowed to move,
+ * intra-cluster edges are ignored (as their total will equal zero and won't
+ * have an affect on the owner circle).
+ */
+CiSELayout.prototype.calcSpringForces = function () {
+    var lEdges = this.graphManager.getAllEdges();
+    for (var i = 0; i < lEdges.length; i++) {
+        var edge = lEdges[i];
+        var source = edge.getSource();
+        var target = edge.getTarget();
+
+        // Ignore intra-cluster edges (all steps 3 thru 5) except for those
+        // incident w/ any inner-nodes
+        if (edge.isIntraCluster && source.getOnCircleNodeExt() != null && target.getOnCircleNodeExt() != null) {
+            continue;
+        }
+
+        this.calcSpringForce(edge, edge.idealLength);
+    }
+};
+
+/**
+ * This method calculates the repulsion forces for each pair of nodes.
+ * Repulsions need not be calculated for on-circle nodes.
+ */
+CiSELayout.prototype.calcRepulsionForces = function () {
+    var lNodes = this.graphManager.getNonOnCircleNodes();
+    for (var i = 0; i < lNodes.length; i++) {
+        var nodeA = lNodes[i];
+        for (var j = i + 1; j < lNodes.length; j++) {
+            var nodeB = lNodes[j];
+
+            this.calcRepulsionForce(nodeA, nodeB);
+        }
+    }
+
+    // We need the calculate repulsion forces for in-circle nodes as well
+    // to keep them inside circle.
+    var inCircleNodes = this.graphManager.getInCircleNodes();
+    for (var _i14 = 0; _i14 < inCircleNodes.length; _i14++) {
+        var inCircleNode = inCircleNodes[_i14];
+        var ownerCircle = inCircleNode.getOwner();
+
+        //TODO: inner nodes repulse on-circle nodes as well, not desired!
+        // Calculate repulsion forces with all nodes inside the owner circle
+        // of this inner node.
+
+        var childNodes = ownerCircle.getNodes();
+        for (var _i15 = 0; _i15 < childNodes.length; _i15++) {
+            var childCiSENode = childNodes[_i15];
+
+            if (childCiSENode != inCircleNode) {
+                this.calcRepulsionForce(inCircleNode, childCiSENode);
+            }
+        }
+    }
+};
+
+/**
+ * This method calculates the gravitational forces for each node. On-circle
+ * nodes move with their owner; thus they are not applied separate gravity.
+ */
+CiSELayout.prototype.calcGravitationalForces = function () {
+    if (!this.getGraphManager().getRoot().isConnected()) {
+        var _lNodes = this.graphManager.getNonOnCircleNodes();
+
+        for (var i = 0; i < _lNodes.length; i++) {
+            var node = _lNodes[i];
+            this.calcGravitationalForce(node);
+        }
+    }
+
+    // Calculate gravitational forces to keep in-circle nodes in the center
+    // TODO: is this really helping or necessary?
+    var lNodes = this.getInCircleNodes();
+
+    for (var _i16 = 0; _i16 < lNodes.length; _i16++) {
+        var _node = lNodes[_i16];
+        this.calcGravitationalForce(_node);
+    }
+};
+
+/**
+ * This method adds up all the forces calculated earlier transferring forces
+ * of on-circle nodes to their owner node (as regular and rotational forces)
+ * when they are not allowed to move. When they are allowed to move,
+ * on-circle nodes will partially contribute to the forces of their owner
+ * circle (no rotational contribution).
+ */
+CiSELayout.prototype.calcTotalForces = function () {
+    var allNodes = this.graphManager.getAllNodes();
+
+    for (var i = 0; i < allNodes.length; i++) {
+        var node = allNodes[i];
+
+        node.displacementX = this.coolingFactor * (node.springForceX + node.repulsionForceX + node.gravitationForceX);
+        node.displacementY = this.coolingFactor * (node.springForceY + node.repulsionForceY + node.gravitationForceY);
+        node.rotationAmount = 0.0;
+
+        node.springForceX = 0.0;
+        node.springForceY = 0.0;
+        node.repulsionForceX = 0.0;
+        node.repulsionForceY = 0.0;
+        node.gravitationForceX = 0.0;
+        node.gravitationForceY = 0.0;
+    }
+
+    var onCircleNodes = this.graphManager.getOnCircleNodes();
+    for (var _i17 = 0; _i17 < onCircleNodes.length; _i17++) {
+        var _node2 = onCircleNodes[_i17];
+        var parentNode = _node2.getOwner().getParent();
+        var values = _node2.getOwner().decomposeForce(_node2);
+
+        if (this.phase === CiSELayout.PHASE_SWAP_PREPERATION) {
+            _node2.getOnCircleNodeExt().addDisplacementForSwap(values.getRotationAmount());
+        }
+
+        parentNode.displacementX += values.getDisplacementX();
+        parentNode.displacementY += values.getDisplacementY();
+        _node2.displacementX = 0.0;
+        _node2.displacementY = 0.0;
+
+        parentNode.rotationAmount += values.getRotationAmount();
+        _node2.rotationAmount = 0.0;
+    }
 };
 
 module.exports = CiSELayout;
@@ -1318,10 +1804,8 @@ function CiSENode(gm, loc, size, vNode) {
     // the constructor of LNode handles alternative constructors
     FDLayoutNode.call(this, gm, loc, size, vNode);
 
-    /**
-     * Amount by which this node will be rotated in this iteration. Note that
-     * clockwise rotation is positive and counter-clockwise is negative.
-     */
+    // Amount by which this node will be rotated in this iteration. Note that
+    // clockwise rotation is positive and counter-clockwise is negative.
     this.rotationAmount = null;
 
     // Extension for on-circle nodes
@@ -1344,12 +1828,6 @@ for (var prop in FDLayoutNode) {
 // Section: Accessors and mutators
 // -----------------------------------------------------------------------------
 
-// This method resets displacement values
-CiSENode.prototype.reset = function () {
-    this.displacementX = 0.0;
-    this.displacementY = 0.0;
-};
-
 CiSENode.prototype.setClusterId = function (cID) {
     this.clusterID = cID;
 };
@@ -1366,22 +1844,110 @@ CiSENode.prototype.getId = function () {
     return this.ID;
 };
 
-// This method sets this node as an on-circle node by creating an extension for it.
+/**
+ * This method sets this node as an on-circle node by creating an extension for it.
+ */
 CiSENode.prototype.setAsOnCircleNode = function () {
     this.onCircleNodeExt = new CiSEOnCircleNodeExt(this);
     return this.onCircleNodeExt;
 };
 
-// This method sets this node as an non on-circle node by deleting the
-// extension for it.
+/**
+ * This method sets this node as an non on-circle node by deleting the
+ * extension for it.
+ */
 CiSENode.prototype.setAsNonOnCircleNode = function () {
     this.onCircleNodeExt = null;
 };
 
-// This method returns the extension of this node for on-circle nodes. This
-// extension is null if this node is a non-on-circle node.
+/**
+ * This method returns the extension of this node for on-circle nodes. This
+ * extension is null if this node is a non-on-circle node.
+ */
 CiSENode.prototype.getOnCircleNodeExt = function () {
     return this.onCircleNodeExt;
+};
+
+/**
+ * This method limits the input displacement with the maximum possible.
+ */
+CiSENode.prototype.getLimitedDisplacement = function (displacement) {
+    if (Math.abs(displacement) > CiSEConstants.MAX_NODE_DISPLACEMENT) displacement = CiSEConstants.MAX_NODE_DISPLACEMENT * IMath.sign(displacement);
+
+    return displacement;
+};
+
+/**
+ * This method returns neighbors of this node which are on-circle, not
+ * in-circle.
+ */
+CiSENode.prototype.getOnCircleNeighbors = function () {
+    var neighbors = this.getNeighborsList();
+    var onCircleNeighbors = [];
+
+    for (var i = 0; i < neighbors.length; i++) {
+        var node = neighbors[i];
+
+        if (node.getOnCircleNodeExt() !== null && node.getClusterID().equals(this.getClusterID())) onCircleNeighbors.push(node);
+    }
+
+    return onCircleNeighbors;
+};
+
+/**
+ * This method returns the number of children (weight) of this node.
+ * If it is a compound, then return the number of simple nodes inside,
+ * otherwise return 1.
+ */
+CiSENode.prototype.getNoOfChildren = function () {
+    if (this.getChild() === null || this.getChild() === undefined) return 1;else return this.getChild().getNodes().length;
+};
+
+// -----------------------------------------------------------------------------
+// Section: Remaining methods
+// -----------------------------------------------------------------------------
+
+/**
+ * This method moves this node as a result of the computations at the end of
+ * this iteration.
+ */
+CiSENode.prototype.move = function () {
+    var layout = this.getOwner().getGraphManager().getLayout();
+
+    this.displacementX = this.getLimitedDisplacement(this.displacementX);
+    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+
+    // First propagate movement to children if it's a circle
+    if (this.getChild() !== null) {
+        // Take size into account when reflecting total force into movement!
+        var noOfNodesOnCircle = this.getChild().getNodes().length;
+        this.displacementX /= noOfNodesOnCircle;
+        this.displacementY /= noOfNodesOnCircle;
+
+        var children = this.getChild().getNodes();
+
+        for (var i = 0; i < children.length; i++) {
+            var node = children[i];
+
+            node.moveBy(this.displacementX, this.displacementY);
+            layout.totalDisplacement += Math.abs(this.displacementX) + Math.abs(this.displacementY);
+        }
+    }
+
+    this.moveBy(this.displacementX, this.displacementY);
+    layout.totalDisplacement += Math.abs(this.displacementX) + Math.abs(this.displacementY);
+
+    if (this.getChild() !== null) {
+        this.getChild().updateBounds(true);
+    }
+};
+
+/**
+ * This method resets displacement values
+ */
+CiSENode.prototype.reset = function () {
+    this.displacementX = 0.0;
+    this.displacementY = 0.0;
 };
 
 module.exports = CiSENode;
@@ -1480,6 +2046,232 @@ CiSEOnCircleNodeExt.prototype.getIndex = function () {
 // This function sets current index of this node in its owner circle.
 CiSEOnCircleNodeExt.prototype.setIndex = function (index) {
     this.orderIndex = index;
+};
+
+/**
+ * This method returns the char code of this node based on the node index.
+ * First node of the cluster is 'a', second one is 'b", and so on. We only
+ * guarentee a unique char code up to 52 nodes in a cluster.
+ *
+ * Remember in ASCII, 'a' is 97 and 'A' is 65. In Unicode, 'A' has a bigger decimal value
+ */
+CiSEOnCircleNodeExt.prototype.getCharCode = function () {
+    var charCode = void 0;
+
+    if (this.orderIndex < 26) charCode = String.fromCharCode(97 + this.orderIndex);else if (this.orderIndex < 52) charCode = String.fromCharCode(65 + this.orderIndex);else charCode = '?';
+
+    return charCode;
+};
+
+/**
+ * This method returns the next node according to current ordering of the
+ * owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.getNextNode = function () {
+    var circle = this.ciseNode.getOwner();
+    var totalNodes = circle.getOnCircleNodes().length;
+    var nextNodeIndex = this.orderIndex + 1;
+
+    if (nextNodeIndex === totalNodes) nextNodeIndex = 0;
+
+    return circle.getOnCircleNodes()[nextNodeIndex];
+};
+
+/**
+ * This method returns the previous node according to current ordering of
+ * the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.getPrevNode = function () {
+    var circle = this.ciseNode.getOwner();
+    var nextNodeIndex = this.orderIndex - 1;
+
+    if (nextNodeIndex === -1) {
+        nextNodeIndex = circle.getOnCircleNodes().size() - 1;
+    }
+
+    return circle.getOnCircleNodes()[nextNodeIndex];
+};
+
+/**
+ * This method returns the extension of the next node according to current
+ * ordering of the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.getNextNodeExt = function () {
+    return this.getNextNode().getOnCircleNodeExt();
+};
+
+/**
+ * This method returns the extension of the previous node according to
+ * current ordering of the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.prevNextNodeExt = function () {
+    return this.getPrevNode().getOnCircleNodeExt();
+};
+
+CiSEOnCircleNodeExt.prototype.canSwapWithNext = function () {
+    return this.canSwapWithNext;
+};
+
+CiSEOnCircleNodeExt.prototype.canSwapWithPrev = function () {
+    return this.canSwapWithPrev;
+};
+
+CiSEOnCircleNodeExt.prototype.getDisplacementForSwap = function () {
+    return this.displacementForSwap;
+};
+
+CiSEOnCircleNodeExt.prototype.setDisplacementForSwap = function (displacementForSwap) {
+    this.displacementForSwap = displacementForSwap;
+};
+
+CiSEOnCircleNodeExt.prototype.addDisplacementForSwap = function (displacementIncrForSwap) {
+    this.displacementForSwap = displacementIncrForSwap;
+    // This is what we intended (but above seems to work better):
+    //		this.displacementForSwap = (this.displacementForSwap +
+    //			displacementIncrForSwap) / 2.0;
+};
+
+// -----------------------------------------------------------------------------
+// Section: Remaining methods
+// -----------------------------------------------------------------------------
+
+/**
+ * This method updates the absolute position of this node with respect to
+ * its angle and the position of node that owns the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.updatePosition = function () {
+    var ownerGraph = this.ciseNode.getOwner();
+    var parentNode = ownerGraph.getParent();
+
+    var parentX = parentNode.getCenterX();
+    var parentY = parentNode.getCenterY();
+
+    var xDifference = ownerGraph.getRadius() * Math.cos(this.angle);
+    var yDifference = ownerGraph.getRadius() * Math.sin(this.angle);
+
+    this.ciseNode.setCenter(parentX + xDifference, parentY + yDifference);
+};
+
+/**
+ * This method returns the index difference of this node with the input
+ * node. Note that the index difference cannot be negative if both nodes are
+ * placed on the circle. Here -1 means at least one of the nodes are not yet
+ * placed on the circle.
+ */
+CiSEOnCircleNodeExt.prototype.getCircDistWithTheNode = function (refNode) {
+    var otherIndex = refNode.getIndex();
+
+    if (otherIndex === -1 || this.getIndex() === -1) {
+        return -1;
+    }
+
+    var diff = this.getIndex() - otherIndex;
+
+    if (diff < 0) {
+        diff += this.ciseNode.getOwner().getOnCircleNodes().length;
+    }
+
+    return diff;
+};
+
+/**
+ * This method calculates the total number of crossings the edges of this
+ * node cause.
+ */
+CiSEOnCircleNodeExt.prototype.calculateTotalCrossing = function () {
+    var intraEdges = this.getIntraClusterEdges();
+    var count = 0;
+    var temp = [];
+
+    this.ciseNode.getOwner().getIntraClusterEdges().forEach(function (edge) {
+        temp.push(edge);
+    });
+
+    this.ciseNode.getEdges().forEach(function (edge) {
+        var index = temp.indexOf(edge);
+        if (index > -1) {
+            temp.splice(index, 1);
+        }
+    });
+
+    intraEdges.forEach(function (edge) {
+        count += edge.calculateTotalCrossingWithList(temp);
+    });
+
+    return count;
+};
+
+/**
+ * This method updates the conditions for swapping of this node with its
+ * previous and next neighbors on the associated circle.
+ */
+CiSEOnCircleNodeExt.prototype.updateSwappingConditions = function () {
+    // Current values
+    var currentCrossingNumber = this.calculateTotalCrossing();
+    var currentNodeIndex = this.orderIndex;
+
+    // What will happen if node is swapped with next
+    var nextNodeExt = this.getNextNode().getOnCircleNodeExt();
+    this.orderIndex = nextNodeExt.getIndex();
+    nextNodeExt.setIndex(currentNodeIndex);
+
+    var tempCrossingNumber = this.calculateTotalCrossing();
+    this.canSwapWithNext = tempCrossingNumber <= currentCrossingNumber;
+
+    // Reset indices
+    nextNodeExt.setIndex(this.orderIndex);
+    this.setIndex(currentNodeIndex);
+
+    // What will happen if node is swapped with prev
+    var prevNodeExt = this.getPrevNode().getOnCircleNodeExt();
+    this.orderIndex = prevNodeExt.getIndex();
+    prevNodeExt.setIndex(currentNodeIndex);
+
+    tempCrossingNumber = this.calculateTotalCrossing();
+    this.canSwapWithPrevious = tempCrossingNumber <= currentCrossingNumber;
+
+    // Reset indices
+    prevNodeExt.setIndex(this.orderIndex);
+    this.setIndex(currentNodeIndex);
+};
+
+/**
+ * This method swaps this node with the specified neighbor (prev or next).
+ */
+CiSEOnCircleNodeExt.prototype.swapWith = function (neighborExt) {
+    this.ciseNode.getOwner().swapNodes(this.ciseNode, neighborExt.ciseNode);
+};
+
+/**
+ * This method finds the number of crossings of inter cluster edges of this
+ * node with the inter cluster edges of the other node.
+ */
+CiSEOnCircleNodeExt.prototype.getInterClusterIntersections = function (other) {
+    var count = 0;
+
+    var thisInterClusterEdges = this.getInterClusterEdges();
+    var otherInterClusterEdges = other.getInterClusterEdges();
+
+    for (var i = 0; i < thisInterClusterEdges.length; i++) {
+        var edge = thisInterClusterEdges[i];
+
+        var point1 = this.ciseNode.getCenter();
+        var point2 = edge.getOtherEnd(this.ciseNode).getCenter();
+
+        for (var j = 0; j < otherInterClusterEdges.length; j++) {
+            var otherEdge = otherInterClusterEdges[i];
+            var point3 = other.ciseNode.getCenter();
+            var point4 = otherEdge.getOtherEnd(other.ciseNode).getCenter();
+
+            if (edge.getOtherEnd(this.ciseNode) !== otherEdge.getOtherEnd(other.ciseNode)) {
+                var result = IGeometry.doIntersect(point1, point2, point3, point4);
+
+                if (result) count++;
+            }
+        }
+    }
+
+    return count;
 };
 
 /**
@@ -1661,7 +2453,21 @@ var Layout = function (_ContinuousLayout) {
 
     var _this = _possibleConstructorReturn(this, (Layout.__proto__ || Object.getPrototypeOf(Layout)).call(this, assign({}, defaults, options)));
 
-    CiSEConstants.DEFAULT_NODE_SEPARATION = options.DEFAULT_NODE_SEPARATION;
+    _this.defaultSettings = [CiSEConstants.DEFAULT_SPRING_STRENGTH, CiSEConstants.DEFAULT_NODE_SEPARATION, CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF, CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE, CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE];
+
+    //Changing CiSEConstants if there is a particular option defined in 'options'
+    if (options.DEFAULT_SPRING_STRENGTH !== null && options.DEFAULT_SPRING_STRENGTH !== undefined) CiSEConstants.DEFAULT_SPRING_STRENGTH = options.DEFAULT_SPRING_STRENGTH;else CiSEConstants.DEFAULT_SPRING_STRENGTH = _this.defaultSettings[0];
+
+    if (options.DEFAULT_NODE_SEPARATION !== null && options.DEFAULT_NODE_SEPARATION !== undefined) CiSEConstants.DEFAULT_NODE_SEPARATION = options.DEFAULT_NODE_SEPARATION;else CiSEConstants.DEFAULT_NODE_SEPARATION = _this.defaultSettings[1];
+
+    if (options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== null && options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== undefined) CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF;else CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = _this.defaultSettings[2];
+
+    if (options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== undefined) CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE;else CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = _this.defaultSettings[3];
+
+    if (options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== undefined) CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE;else CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = _this.defaultSettings[4];
+
+    // This is for letting CiSELayout to know if it is going to be animated
+    CiSEConstants.INCREMENTAL = _this.state.animateEnd;
     return _this;
   }
 
@@ -1693,11 +2499,9 @@ var Layout = function (_ContinuousLayout) {
       ciseLayout.doStep1();
       ciseLayout.doStep2();
 
-      //root.setEstimatedSize(root.getBiggerDimension()); TODO Layout-base
-
+      // TODO Layout-base -- root.setEstimatedSize(root.getBiggerDimension());
       ciseLayout.prepareCirclesForReversal();
-
-      console.log(graphManager);
+      ciseLayout.calcIdealEdgeLengths(false);
     }
 
     // run this each iteraction
@@ -1707,10 +2511,11 @@ var Layout = function (_ContinuousLayout) {
     value: function tick() {
       var _this2 = this;
 
+      // Getting References
       var self = this;
       var state = this.state;
-      var isDone = true;
 
+      // Update Each Node Locations
       state.nodes.forEach(function (n) {
         var s = _this2.getScratch(n);
 
@@ -1719,7 +2524,7 @@ var Layout = function (_ContinuousLayout) {
         s.y = location.getCenterY();
       });
 
-      return isDone;
+      return true;
     }
 
     // run this function after the layout is done ticking
@@ -2113,7 +2918,8 @@ var tick = function tick(state) {
 
   var duration = Date.now() - s.startTime;
 
-  return !s.infinite && (tickIndicatesDone || s.tickIndex >= s.maxIterations || duration >= s.maxSimulationTime);
+  // || s.tickIndex >= s.maxIterations || duration >= s.maxSimulationTime
+  return !s.infinite && tickIndicatesDone;
 };
 
 var multitick = function multitick(state) {

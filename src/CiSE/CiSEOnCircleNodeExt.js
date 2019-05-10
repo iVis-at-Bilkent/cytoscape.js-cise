@@ -96,6 +96,243 @@ CiSEOnCircleNodeExt.prototype.setIndex = function(index)
 };
 
 /**
+ * This method returns the char code of this node based on the node index.
+ * First node of the cluster is 'a', second one is 'b", and so on. We only
+ * guarentee a unique char code up to 52 nodes in a cluster.
+ *
+ * Remember in ASCII, 'a' is 97 and 'A' is 65. In Unicode, 'A' has a bigger decimal value
+ */
+CiSEOnCircleNodeExt.prototype.getCharCode = function(){
+    let charCode;
+
+    if( this.orderIndex < 26)
+        charCode = String.fromCharCode(97 + this.orderIndex);
+    else if (this.orderIndex < 52)
+        charCode = String.fromCharCode( 65 + this.orderIndex );
+    else
+        charCode = '?';
+
+    return charCode;
+};
+
+/**
+ * This method returns the next node according to current ordering of the
+ * owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.getNextNode = function(){
+    let circle = this.ciseNode.getOwner();
+    let totalNodes = circle.getOnCircleNodes().length;
+    let nextNodeIndex = this.orderIndex + 1;
+
+    if(nextNodeIndex === totalNodes)
+        nextNodeIndex = 0;
+
+    return circle.getOnCircleNodes()[nextNodeIndex];
+};
+
+/**
+ * This method returns the previous node according to current ordering of
+ * the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.getPrevNode = function(){
+    let circle = this.ciseNode.getOwner();
+    let nextNodeIndex = this.orderIndex - 1;
+
+    if (nextNodeIndex === -1)
+    {
+        nextNodeIndex = circle.getOnCircleNodes().size() - 1;
+    }
+
+    return circle.getOnCircleNodes()[nextNodeIndex];
+};
+
+/**
+ * This method returns the extension of the next node according to current
+ * ordering of the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.getNextNodeExt= function(){
+    return this.getNextNode().getOnCircleNodeExt();
+};
+
+/**
+ * This method returns the extension of the previous node according to
+ * current ordering of the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.prevNextNodeExt= function(){
+    return this.getPrevNode().getOnCircleNodeExt();
+};
+
+CiSEOnCircleNodeExt.prototype.canSwapWithNext = function(){
+  return this.canSwapWithNext;
+};
+
+CiSEOnCircleNodeExt.prototype.canSwapWithPrev = function(){
+    return this.canSwapWithPrev;
+};
+
+CiSEOnCircleNodeExt.prototype.getDisplacementForSwap = function(){
+  return this.displacementForSwap;
+};
+
+CiSEOnCircleNodeExt.prototype.setDisplacementForSwap = function(displacementForSwap){
+    this.displacementForSwap = displacementForSwap;
+};
+
+CiSEOnCircleNodeExt.prototype.addDisplacementForSwap = function(displacementIncrForSwap){
+    this.displacementForSwap = displacementIncrForSwap;
+    // This is what we intended (but above seems to work better):
+    //		this.displacementForSwap = (this.displacementForSwap +
+    //			displacementIncrForSwap) / 2.0;
+};
+
+// -----------------------------------------------------------------------------
+// Section: Remaining methods
+// -----------------------------------------------------------------------------
+
+/**
+ * This method updates the absolute position of this node with respect to
+ * its angle and the position of node that owns the owner circle.
+ */
+CiSEOnCircleNodeExt.prototype.updatePosition = function(){
+    let ownerGraph = this.ciseNode.getOwner();
+    let parentNode = ownerGraph.getParent();
+
+    let parentX = parentNode.getCenterX();
+    let parentY = parentNode.getCenterY();
+
+    let xDifference = ownerGraph.getRadius() * Math.cos(this.angle);
+    let yDifference = ownerGraph.getRadius() * Math.sin(this.angle);
+
+    this.ciseNode.setCenter(parentX + xDifference , parentY + yDifference);
+};
+
+/**
+ * This method returns the index difference of this node with the input
+ * node. Note that the index difference cannot be negative if both nodes are
+ * placed on the circle. Here -1 means at least one of the nodes are not yet
+ * placed on the circle.
+ */
+CiSEOnCircleNodeExt.prototype.getCircDistWithTheNode = function(refNode){
+    let otherIndex = refNode.getIndex();
+
+    if (otherIndex === -1 || this.getIndex() === -1)
+    {
+        return -1;
+    }
+
+    let diff = this.getIndex() - otherIndex;
+
+    if (diff < 0)
+    {
+        diff += this.ciseNode.getOwner().getOnCircleNodes().length;
+    }
+
+    return diff;
+};
+
+/**
+ * This method calculates the total number of crossings the edges of this
+ * node cause.
+ */
+CiSEOnCircleNodeExt.prototype.calculateTotalCrossing = function() {
+    let intraEdges = this.getIntraClusterEdges();
+    let count = 0;
+    let temp = [];
+
+    this.ciseNode.getOwner().getIntraClusterEdges().forEach(function (edge) {
+       temp.push(edge);
+    });
+
+    this.ciseNode.getEdges().forEach(function (edge) {
+        let index = temp.indexOf(edge);
+        if (index > -1) {
+            temp.splice(index, 1);
+        }
+    });
+
+    intraEdges.forEach(function (edge) {
+       count += edge.calculateTotalCrossingWithList(temp);
+    });
+
+    return count;
+};
+
+/**
+ * This method updates the conditions for swapping of this node with its
+ * previous and next neighbors on the associated circle.
+ */
+CiSEOnCircleNodeExt.prototype.updateSwappingConditions = function(){
+    // Current values
+    let currentCrossingNumber = this.calculateTotalCrossing();
+    let currentNodeIndex = this.orderIndex;
+
+    // What will happen if node is swapped with next
+    let nextNodeExt = this.getNextNode().getOnCircleNodeExt();
+    this.orderIndex = nextNodeExt.getIndex();
+    nextNodeExt.setIndex(currentNodeIndex);
+
+    let tempCrossingNumber = this.calculateTotalCrossing();
+    this.canSwapWithNext = tempCrossingNumber <= currentCrossingNumber;
+
+    // Reset indices
+    nextNodeExt.setIndex(this.orderIndex);
+    this.setIndex(currentNodeIndex);
+
+    // What will happen if node is swapped with prev
+    let prevNodeExt = this.getPrevNode().getOnCircleNodeExt();
+    this.orderIndex = prevNodeExt.getIndex();
+    prevNodeExt.setIndex(currentNodeIndex);
+
+    tempCrossingNumber = this.calculateTotalCrossing();
+    this.canSwapWithPrevious = tempCrossingNumber <= currentCrossingNumber;
+
+    // Reset indices
+    prevNodeExt.setIndex(this.orderIndex);
+    this.setIndex(currentNodeIndex);
+};
+
+/**
+ * This method swaps this node with the specified neighbor (prev or next).
+ */
+CiSEOnCircleNodeExt.prototype.swapWith = function(neighborExt){
+    this.ciseNode.getOwner().swapNodes(this.ciseNode, neighborExt.ciseNode);
+};
+
+/**
+ * This method finds the number of crossings of inter cluster edges of this
+ * node with the inter cluster edges of the other node.
+ */
+CiSEOnCircleNodeExt.prototype.getInterClusterIntersections = function(other) {
+    let count = 0;
+
+    let thisInterClusterEdges = this.getInterClusterEdges();
+    let otherInterClusterEdges = other.getInterClusterEdges();
+
+   for(let i = 0; i < thisInterClusterEdges.length; i++){
+       let edge = thisInterClusterEdges[i];
+
+       let point1 = this.ciseNode.getCenter();
+       let point2 = edge.getOtherEnd(this.ciseNode).getCenter();
+
+       for(let j = 0; j < otherInterClusterEdges.length; j++){
+           let otherEdge = otherInterClusterEdges[i];
+           let point3 = other.ciseNode.getCenter();
+           let point4 = otherEdge.getOtherEnd(other.ciseNode).getCenter();
+
+           if (edge.getOtherEnd(this.ciseNode) !== otherEdge.getOtherEnd(other.ciseNode))
+           {
+               let result = IGeometry.doIntersect(point1, point2, point3, point4);
+
+               if (result)
+                   count++;
+           }
+       }
+   }
+
+    return count;
+};
+
+/**
  * This method returns the inter cluster edges of the associated node.
  */
 CiSEOnCircleNodeExt.prototype.getInterClusterEdges = function()
@@ -129,7 +366,6 @@ CiSEOnCircleNodeExt.prototype.getIntraClusterEdges = function()
                 this.intraClusterEdges.push(edge);
             }
         }
-
     }
 
     return this.intraClusterEdges;
