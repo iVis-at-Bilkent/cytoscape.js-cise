@@ -1800,7 +1800,11 @@ CiSELayout.prototype.runSpringEmbedderTick = function () {
             return true;
         }
 
-        this.coolingFactor = this.initialCoolingFactor * ((this.maxIterations - this.iterations) / this.maxIterations);
+        // Linear
+        // this.coolingFactor = this.initialCoolingFactor * ( (this.maxIterations - this.iterations * 5 ) / this.maxIterations );
+
+        // Exponental Decay
+        this.coolingFactor = this.initialCoolingFactor * Math.pow(1 - 0.005, this.iterations);
     }
 
     this.totalDisplacement = 0;
