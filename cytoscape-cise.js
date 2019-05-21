@@ -2069,7 +2069,7 @@ CiSELayout.prototype.calcRepulsionForces = function () {
         for (var _i15 = 0; _i15 < childNodes.length; _i15++) {
             var childCiSENode = childNodes[_i15];
 
-            if (childCiSENode != inCircleNode) {
+            if (childCiSENode !== inCircleNode) {
                 this.calcRepulsionForce(inCircleNode, childCiSENode);
             }
         }
@@ -2115,6 +2115,7 @@ CiSELayout.prototype.calcTotalForces = function () {
 
         node.displacementX = this.coolingFactor * (node.springForceX + node.repulsionForceX + node.gravitationForceX);
         node.displacementY = this.coolingFactor * (node.springForceY + node.repulsionForceY + node.gravitationForceY);
+
         node.rotationAmount = 0.0;
 
         node.springForceX = 0.0;
@@ -2167,6 +2168,7 @@ CiSELayout.prototype.moveNodes = function () {
         // Also move all in-circle nodes. Note that in-circle nodes will be
         // empty if this option is not set, hence no negative effect on
         // performance
+
         var inCircleNodes = this.graphManager.getInCircleNodes();
         var inCircleNode = void 0;
 
@@ -2239,7 +2241,7 @@ CiSELayout.prototype.moveNodes = function () {
 
         // TODO max heap -> extractMax
         nonSafePairs.sort(function (a, b) {
-            return b.getDiscrepancy() - a.getDiscrepancy();
+            return a.getDiscrepancy() - b.getDiscrepancy();
         });
 
         // Look for a nonsafe pair until we swap one
@@ -2324,7 +2326,7 @@ CiSELayout.prototype.moveNodes = function () {
             // Check if they were previously swapped
             if (!this.isSwappedPreviously(safePair)) {
                 safePair.swap();
-                console.log('Swap Happened -- afe pair');
+                console.log('Swap Happened -- safe pair');
                 console.log(safePair);
                 swappedNodes.push(safePair.getFirstNode());
                 swappedNodes.push(safePair.getSecondNode());
@@ -2355,7 +2357,7 @@ CiSELayout.prototype.moveNodes = function () {
  * swapped.
  */
 CiSELayout.prototype.isSwappedPreviously = function (pair) {
-    for (var i = 0; i < this.swappedPairsInLastIteration; i++) {
+    for (var i = 0; i < this.swappedPairsInLastIteration.length; i++) {
         var swappedPair = this.swappedPairsInLastIteration[i];
 
         if (swappedPair.getFirstNode() === pair.getFirstNode() && swappedPair.getSecondNode() === pair.getSecondNode() || swappedPair.getSecondNode() === pair.getFirstNode() && swappedPair.getFirstNode() === pair.getSecondNode()) {
@@ -3331,7 +3333,7 @@ module.exports = Layout;
 module.exports = Object.freeze({
   animate: true, // whether to show the layout as it's running; special 'end' value makes the layout animate like a discrete layout
   refresh: 10, // number of ticks per frame; higher is faster but more jerky
-  maxIterations: 1000, // max iterations before the layout will bail out
+  maxIterations: 2500, // max iterations before the layout will bail out
   maxSimulationTime: 4000, // max length in ms to run the layout
   ungrabifyWhileSimulating: false, // so you can't drag nodes during layout
   fit: true, // on every layout reposition of nodes, fit the viewport

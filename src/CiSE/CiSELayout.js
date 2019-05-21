@@ -642,7 +642,8 @@ CiSELayout.prototype.runSpringEmbedderTick = function (){
         }
 
         this.coolingFactor = this.initialCoolingFactor *
-                            ( (this.maxIterations - this.iterations) / this.maxIterations );
+                            ( (this.maxIterations - this.iterations ) / this.maxIterations );
+
     }
 
     this.totalDisplacement = 0;
@@ -931,7 +932,7 @@ CiSELayout.prototype.calcRepulsionForces = function() {
         for(let i = 0; i < childNodes.length; i++){
             let childCiSENode = childNodes[i];
 
-            if (childCiSENode != inCircleNode)
+            if (childCiSENode !== inCircleNode)
             {
                 this.calcRepulsionForce(inCircleNode, childCiSENode);
             }
@@ -980,6 +981,7 @@ CiSELayout.prototype.calcTotalForces = function(){
 
         node.displacementX = this.coolingFactor * (node.springForceX + node.repulsionForceX + node.gravitationForceX);
         node.displacementY = this.coolingFactor * (node.springForceY + node.repulsionForceY + node.gravitationForceY);
+
         node.rotationAmount = 0.0;
 
         node.springForceX = 0.0;
@@ -1036,6 +1038,7 @@ CiSELayout.prototype.moveNodes = function(){
         // Also move all in-circle nodes. Note that in-circle nodes will be
         // empty if this option is not set, hence no negative effect on
         // performance
+
         let inCircleNodes = this.graphManager.getInCircleNodes();
         let inCircleNode;
 
@@ -1047,6 +1050,7 @@ CiSELayout.prototype.moveNodes = function(){
             inCircleNode.displacementY /= 20.0;
             inCircleNode.move();
         }
+
     } else {
         // If in perform-swap phase of step 4, we have to look for swappings
         // that do not increase edge crossings and is likely to decrease total
@@ -1117,7 +1121,7 @@ CiSELayout.prototype.moveNodes = function(){
 
             // TODO max heap -> extractMax
             nonSafePairs.sort(function(a, b) {
-                return b.getDiscrepancy() - a.getDiscrepancy(); });
+                return a.getDiscrepancy() - b.getDiscrepancy(); });
 
             // Look for a nonsafe pair until we swap one
             while (lookForSwap && nonSafePairs.length > 0)
@@ -1212,7 +1216,7 @@ CiSELayout.prototype.moveNodes = function(){
                 if (!this.isSwappedPreviously(safePair))
                 {
                     safePair.swap();
-                    console.log('Swap Happened -- afe pair');
+                    console.log('Swap Happened -- safe pair');
                     console.log(safePair);
                     swappedNodes.push(safePair.getFirstNode());
                     swappedNodes.push(safePair.getSecondNode());
@@ -1246,7 +1250,7 @@ CiSELayout.prototype.moveNodes = function(){
  * swapped.
  */
 CiSELayout.prototype.isSwappedPreviously = function(pair) {
-    for(let i = 0; i < this.swappedPairsInLastIteration; i++) {
+    for(let i = 0; i < this.swappedPairsInLastIteration.length; i++) {
         let swappedPair = this.swappedPairsInLastIteration[i];
 
         if ((swappedPair.getFirstNode() === pair.getFirstNode() &&

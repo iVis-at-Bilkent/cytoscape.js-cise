@@ -9,10 +9,15 @@
 
 		<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
 		<script src="https://raw.githack.com/iVis-at-Bilkent/layout-base/unstable/layout-base.js"></script>
-		<!-- <script src="node_modules/layout-base/layout-base.js"></script> -->
+	 	<!-- <script src="node_modules/layout-base/layout-base.js"></script> -->
 		<script src="https://raw.githack.com/iVis-at-Bilkent/avsdf-base/unstable/avsdf-base.js"></script>
 		<script src="https://raw.githack.com/iVis-at-Bilkent/cose-base/master/cose-base.js"></script>
 		<script src="cytoscape-cise.js"></script>
+
+
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+		<script src="https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-graphml/master/cytoscape-graphml.js"></script>
+
 
 		<style>
 			body {
@@ -23,7 +28,7 @@
 			#cy {
 				position: absolute;
 				left: 0;
-				top: 0;
+				top: 60px;
 				bottom: 0;
 				right: 0;
 				z-index: 999;
@@ -72,97 +77,23 @@
 			.my-legend a {
 				color: #777;
 			}
+
+			#layoutButton{
+				margin-left: 30px;
+			}
 		</style>
-
-		<script>
-			let arrayOfClusterArrays = [
-				['a', 'b', 'c', 'd', 'e'],
-				['x', 'y', 'z']
-			];
-
-			let clusterColors = ['#3a7ecf', '#37CF47', '#CF2727', '#CA34CF', '#CF7B13', '#CFCE00'];
-
-			document.addEventListener('DOMContentLoaded', function(){
-				var cy = window.cy = cytoscape({
-					container: document.getElementById('cy'),
-
-					// demo your layout
-					layout: {
-						name: 'cise',
-						DEFAULT_NODE_SEPARATION: 40,
-						during: true,
-						clusters: arrayOfClusterArrays,
-						refresh: 1
-					},
-					style: [
-						{
-							selector: 'node',
-							style: {
-								'content': 'data(id)',
-								'background-color': function(ele){
-									for(let i = 0; i < arrayOfClusterArrays.length; i++)
-										if(arrayOfClusterArrays[i].includes(ele.data('id')))
-											return clusterColors[i];
-
-									return '#756D76';
-								}
-							}
-						},
-
-						{
-							selector: 'edge',
-							style: {
-								'curve-style': 'bezier',
-								'opacity': 0.65,
-								'line-color': function(ele){
-									let source = ele.source();
-									let target = ele.target();
-									for(let i = 0; i < arrayOfClusterArrays.length; i++)
-										if(arrayOfClusterArrays[i].includes(source.data('id')) &&
-												arrayOfClusterArrays[i].includes(target.data('id')))
-											return clusterColors[i];
-
-									return '#756D76';
-								}
-							}
-						}
-					],
-
-					elements: {
-						nodes: [
-							{ data: { id: 'a'} }, { data: { id: 'b'} }, { data: { id: 'c'} },
-							{ data: { id: 'd'} }, { data: { id: 'e'} }, { data: { id: 'x'} },
-							{ data: { id: 'y'} }, { data: { id: 'z'} }
-						],
-						edges: [
-							{ data: { source: 'a', target: 'e', directed: false} },
-							{ data: { source: 'a', target: 'b', directed: false} },
-							{ data: { source: 'b', target: 'e', directed: false} },
-							{ data: { source: 'b', target: 'd', directed: false} },
-							{ data: { source: 'b', target: 'c', directed: false} },
-							{ data: { source: 'd', target: 'e', directed: false} },
-							{ data: { source: 'd', target: 'c', directed: false} },
-							{ data: { source: 'c', target: 'e', directed: false} },
-							{ data: { source: 'x', target: 'y', directed: false} },
-							{ data: { source: 'y', target: 'z', directed: false} },
-							{ data: { source: 'x', target: 'b', directed: false} },
-							{ data: { source: 'y', target: 'c', directed: false} },
-							{ data: { source: 'z', target: 'c', directed: false} },
-							{ data: { source: 'z', target: 'b', directed: false} },
-							{ data: { source: 'x', target: 'z', directed: false} }
-						]
-					}
-				});
-			});
-
-		</script>
 	</head>
 
 	<body>
 		<h1>cytoscape-cise demo</h1>
 
+		<button onclick="document.getElementById('file-input').click();">Import Graphml</button>
+		<input id="file-input" type="file" name="name" style="display: none;" />
+		<button id="layoutButton" type="button">Run CiSE Layout</button>
+
 		<div id="cy"></div>
 
+		<!--
 		<div class='my-legend'>
 			<div class='legend-title'>Representation of Node Colors</div>
 			<div class='legend-scale'>
@@ -177,5 +108,182 @@
 				</ul>
 			</div>
 		</div>
+		-->
 	</body>
 </html>
+
+<script>
+	let arrayOfClusterArrays = [
+		['a', 'b', 'c', 'd', 'e'],
+		['x', 'y', 'z']
+	];
+
+	let clusterColors = ['#3a7ecf', '#37CF47', '#CF2727', '#CA34CF', '#CF7B13', '#CFCE00'];
+
+	let rgbToHex = function (rgb) {
+		let hex = Number(rgb).toString(16);
+		if (hex.length < 2) {
+			hex = "0" + hex;
+		}
+		return hex;
+	};
+
+	let fullColorHex = function(r,g,b) {
+		var red = rgbToHex(r);
+		var green = rgbToHex(g);
+		var blue = rgbToHex(b);
+		return red+green+blue;
+	};
+
+	document.addEventListener('DOMContentLoaded', function(){
+		var cy = window.cy = cytoscape({
+			container: document.getElementById('cy'),
+			// demo your layout
+			layout: {
+				name: 'circle'
+			},
+			style: [
+				{
+					selector: 'node',
+					style: {
+						'content': 'data(id)',
+						'background-color': function(ele){
+							for(let i = 0; i < arrayOfClusterArrays.length; i++)
+								if(arrayOfClusterArrays[i].includes(ele.data('id')))
+									return clusterColors[i];
+
+							return '#756D76';
+						}
+					}
+				},
+
+				{
+					selector: 'edge',
+					style: {
+						'curve-style': 'bezier',
+						'opacity': 0.65,
+						'line-color': function(ele){
+							let source = ele.source();
+							let target = ele.target();
+							for(let i = 0; i < arrayOfClusterArrays.length; i++)
+								if(arrayOfClusterArrays[i].includes(source.data('id')) &&
+										arrayOfClusterArrays[i].includes(target.data('id')))
+									return clusterColors[i];
+
+							return '#756D76';
+						}
+					}
+				}
+			],
+
+			elements: {
+				nodes: [
+					{ data: { id: 'a'} }, { data: { id: 'b'} }, { data: { id: 'c'} },
+					{ data: { id: 'd'} }, { data: { id: 'e'} }, { data: { id: 'x'} },
+					{ data: { id: 'y'} }, { data: { id: 'z'} }
+				],
+				edges: [
+					{ data: { source: 'a', target: 'e', directed: false} },
+					{ data: { source: 'a', target: 'b', directed: false} },
+					{ data: { source: 'b', target: 'e', directed: false} },
+					{ data: { source: 'b', target: 'd', directed: false} },
+					{ data: { source: 'b', target: 'c', directed: false} },
+					{ data: { source: 'd', target: 'e', directed: false} },
+					{ data: { source: 'd', target: 'c', directed: false} },
+					{ data: { source: 'c', target: 'e', directed: false} },
+					{ data: { source: 'x', target: 'y', directed: false} },
+					{ data: { source: 'y', target: 'z', directed: false} },
+					{ data: { source: 'x', target: 'b', directed: false} },
+					{ data: { source: 'y', target: 'c', directed: false} },
+					{ data: { source: 'z', target: 'c', directed: false} },
+					{ data: { source: 'z', target: 'b', directed: false} },
+					{ data: { source: 'x', target: 'z', directed: false} }
+				]
+			}
+		});
+	});
+
+	// Read File
+	document.getElementById('file-input').addEventListener('change', function (evt) {
+		let files = evt.target.files;
+		let reader = new FileReader();
+		let contents;
+		reader.readAsText(files[0]);
+		reader.onload = function (event) {
+			// Contents is a string of the graphml
+			contents = event.target.result;
+
+			// Update Cytoscape
+			window.cy.startBatch();
+			window.cy.style().clear();
+			window.cy.remove('nodes');
+			window.cy.remove('edges');
+			window.cy.graphml({layoutBy: "circle"});
+			window.cy.graphml(contents);
+
+			arrayOfClusterArrays = [];
+			clusterColors = [];
+			let uniqueClusterIDs = [];
+
+			window.cy.nodes().forEach(function (node) {
+				let clusterID = node.data('clusterID');
+				if (uniqueClusterIDs.includes(clusterID)) {
+					let index = uniqueClusterIDs.indexOf(clusterID);
+					arrayOfClusterArrays[index].push(node.data('id'));
+				} else {
+					uniqueClusterIDs.push(clusterID);
+					let colors = node.data('color').split(" ");
+					let rgbColor = '#' + fullColorHex(colors[0], colors[1], colors[2]);
+					clusterColors.push(rgbColor);
+
+					arrayOfClusterArrays.push([node.data('id')]);
+				}
+			});
+
+			window.cy.endBatch();
+
+			window.cy.style()
+					.selector('node').style({
+				'content': 'data(id)',
+				'background-color': function (ele) {
+					for (let i = 0; i < arrayOfClusterArrays.length; i++)
+						if (arrayOfClusterArrays[i].includes(ele.data('id')))
+							return clusterColors[i];
+
+					return '#756D76';
+				}
+			})
+					.selector('edge').style({
+				'curve-style': 'bezier',
+				'width': 5,
+				'opacity': 0.65,
+				'line-color': function (ele) {
+					let source = ele.source();
+					let target = ele.target();
+					for (let i = 0; i < arrayOfClusterArrays.length; i++)
+						if (arrayOfClusterArrays[i].includes(source.data('id')) &&
+								arrayOfClusterArrays[i].includes(target.data('id')))
+							return clusterColors[i];
+
+					return '#756D76';
+				}
+			})
+
+					.update();
+		}
+
+	});
+
+	document.getElementById("layoutButton").addEventListener("click", function(){
+		var layout = cy.layout({
+			name: 'cise',
+			DEFAULT_NODE_SEPARATION: 40,
+			during: true,
+			clusters: arrayOfClusterArrays,
+			refresh: 1
+		});
+
+		layout.run();
+	});
+
+</script>
