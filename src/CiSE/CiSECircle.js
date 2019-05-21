@@ -7,15 +7,12 @@
  */
 
 let LGraph = require('avsdf-base').layoutBase.LGraph;
-let HashSet = require('avsdf-base').layoutBase.HashSet;
 let IGeometry = require('avsdf-base').layoutBase.IGeometry;
-let Quicksort = require('avsdf-base').layoutBase.Quicksort;
-
-
+let NeedlemanWunsch = require('avsdf-base').layoutBase.NeedlemanWunsch;
 let CircularForce = require('./CircularForce');
 let CiSEConstants = require('./CiSEConstants');
 let CiSEInterClusterEdgeInfo = require('./CiSEInterClusterEdgeInfo');
-
+let CiSEInterClusterEdgeSort = require('./CiSEInterClusterEdgeSort');
 
 function CiSECircle(parent, graphMgr, vNode)
 {
@@ -116,7 +113,7 @@ CiSECircle.prototype.setMayNotBeReversed = function(){
 
 
 // This method returns whether or not this circle has been reversed.
-CiSECircle.prototype.mayBeReversed = function(){
+CiSECircle.prototype.getMayBeReversed = function(){
     return this.mayBeReversed;
 };
 
@@ -343,27 +340,13 @@ CiSECircle.prototype.decomposeForce = function(node){
         let isRotationClockwise;
         if (Math.PI <= C_rev_angle && C_rev_angle < IGeometry.TWO_PI)
         {
-            if (C_angle <= F_angle && F_angle < C_rev_angle)
-            {
-                isRotationClockwise = true;
-            }
-            else
-            {
-                isRotationClockwise = false;
-            }
+            isRotationClockwise = C_angle <= F_angle && F_angle < C_rev_angle;
         }
         else
         {
             C_rev_angle -= IGeometry.TWO_PI;
 
-            if (C_rev_angle <= F_angle && F_angle < C_angle)
-            {
-                isRotationClockwise = false;
-            }
-            else
-            {
-                isRotationClockwise = true;
-            }
+            isRotationClockwise = !(C_rev_angle <= F_angle && F_angle < C_angle);
         }
 
         let  angle_diff = Math.abs(C_angle - F_angle);
@@ -475,7 +458,7 @@ CiSECircle.prototype.swapNodes = function(first, second){
 CiSECircle.prototype.checkAndReverseIfReverseIsBetter = function(){
     // First form the list of inter cluster edges of this cluster
     let interClusterEdges = this.getInterClusterEdges();
-    let interClusterEdgeInfos = [];
+    let interClusterEdgeInfos = new Array(interClusterEdges.length);
 
     // Now form the info array that contains not only the inter-cluster
     // edges but also other information such as the angle they make w.r.t.
@@ -483,9 +466,245 @@ CiSECircle.prototype.checkAndReverseIfReverseIsBetter = function(){
     // In the meantime, calculate how many inter-cluster edge each on-circle
     // node is incident with. This information will be used to duplicate
     // char codes of those nodes with 2 or more inter-graph edge.
+    let angle;
+    let clusterCenter = this.getParent().getCenter();
+    let interClusterEdge;
+    let endInThisCluster;
+    let endInOtherCluster;
+    let centerOfEndInOtherCluster;
+    let nodeCount = this.onCircleNodes.length;
+    let interClusterEdgeDegree = new Array(nodeCount);
+
+    for(let i = 0; i < nodeCount; i++) {
+        interClusterEdgeDegree[i] = 0;
+    }
+
+    let noOfOnCircleNodesToBeRepeated = 0;
+
+    for(let i = 0; i < interClusterEdges.length; i++){
+        interClusterEdge = interClusterEdges[i];
+        endInOtherCluster = this.getOtherEnd(interClusterEdge);
+        centerOfEndInOtherCluster = endInOtherCluster.getCenter();
+        angle = IGeometry.angleOfVector(clusterCenter.x, clusterCenter.y,
+                                        centerOfEndInOtherCluster.x, centerOfEndInOtherCluster.y);
+        interClusterEdgeInfos[i] = new CiSEInterClusterEdgeInfo(interClusterEdge, angle);
+
+        endInThisCluster = this.getThisEnd(interClusterEdge);
+        interClusterEdgeDegree[endInThisCluster.getOnCircleNodeExt().getIndex()]++;
+
+        if (interClusterEdgeDegree[endInThisCluster.getOnCircleNodeExt().getIndex()] > 1)
+        {
+            noOfOnCircleNodesToBeRepeated++;
+        }
+    }
+
+    // On circle nodes will be ordered by their indices in this array
+    let onCircleNodes = this.onCircleNodes;
+
+    // Form arrays for current and reversed order of nodes of this cluster
+    // Take any repetitions into account (if node with char code 'b' is
+    // incident with 3 inter-cluster edges, then repeat 'b' 2 times)
+    let nodeCountWithRepetitions = nodeCount + noOfOnCircleNodesToBeRepeated;
+    let clusterNodes = new Array(2 * nodeCountWithRepetitions);
+    let reversedClusterNodes = new Array(2 * nodeCountWithRepetitions);
+    let node;
+    let index = -1;
+
+    for (let i = 0; i < nodeCount; i++)
+    {
+        node = onCircleNodes[i];
+
+        // on circle nodes with no inter-cluster edges are also considered
+        if (interClusterEdgeDegree[i] === 0)
+            interClusterEdgeDegree[i] = 1;
+
+        for (let j = 0; j < interClusterEdgeDegree[i]; j++)
+        {
+            index++;
+
+            clusterNodes[index] =
+                clusterNodes[nodeCountWithRepetitions + index] =
+                    reversedClusterNodes[nodeCountWithRepetitions - 1 - index] =
+                        reversedClusterNodes[2 * nodeCountWithRepetitions - 1 - index] =
+                            node.getOnCircleNodeExt().getCharCode();
+        }
+    }
 
 
+    // Now sort the inter-cluster edges w.r.t. their angles TODO
+    let edgeSorter = new CiSEInterClusterEdgeSort(this, interClusterEdgeInfos);
 
+    // Form an array for order of neighboring nodes of this cluster
+    let neighborNodes = new Array(interClusterEdgeInfos.length);
+
+    for (let i = 0; i < interClusterEdgeInfos.length; i++)
+    {
+        interClusterEdge = interClusterEdgeInfos[i].getEdge();
+        endInThisCluster = this.getThisEnd(interClusterEdge);
+        neighborNodes[i] = endInThisCluster.getOnCircleNodeExt().getCharCode();
+    }
+
+    // Now calculate a score for the alignment of the current order of the
+    // nodes of this cluster w.r.t. to their neighbors order
+
+    let alignmentScoreCurrent = this.computeAlignmentScore(clusterNodes, neighborNodes);
+
+    // Then calculate a score for the alignment of the reversed order of the
+    // nodes of this cluster w.r.t. to their neighbors order
+
+    if (alignmentScoreCurrent !== -1)
+    {
+        let alignmentScoreReversed = this.computeAlignmentScore(reversedClusterNodes, neighborNodes);
+
+        // Check if reversed order is *substantially* better aligned with
+        // the order of the neighbors of this cluster around the cluster; if
+        // so, reverse the order
+
+        if (alignmentScoreReversed !== -1)
+        {
+            if (alignmentScoreReversed > alignmentScoreCurrent)
+            {
+                console.log("Reversed Cluster: ");
+                console.log(this);
+                this.reverseNodes();
+                this.setMayNotBeReversed();
+                return true;
+            }
+        }
+    }
+
+    return false;
+};
+
+/**
+ * This method computes an alignment for the two input char arrays and
+ * returns the alignment amount. If alignment is unsuccessful for some
+ * reason, it returns -1.
+ */
+CiSECircle.prototype.computeAlignmentScore = function(charArrayReader1,  charArrayReader2)
+{
+    let aligner = new NeedlemanWunsch(charArrayReader1, charArrayReader2, 20, -1, -2);
+    return aligner.getScore();
+};
+
+/**
+ * This method reverses the nodes on this circle.
+ */
+CiSECircle.prototype.reverseNodes = function()
+{
+    let onCircleNodes = this.getOnCircleNodes();
+    let noOfNodesOnCircle = this.getOnCircleNodes().length;
+
+    for (let i = 0; i < noOfNodesOnCircle; i++)
+    {
+        let node = onCircleNodes[i];
+        let nodeExt = node.getOnCircleNodeExt();
+
+        nodeExt.setIndex((noOfNodesOnCircle - nodeExt.getIndex()) % noOfNodesOnCircle);
+    }
+
+    this.reCalculateNodeAnglesAndPositions();
+};
+
+/**
+ * This method removes given on-circle node from the circle and calls
+ * reCalculateCircleSizeAndRadius and  reCalculateNodeAnglesAndPositions.
+ * This method should be called when an inner node is found and to be moved
+ * inside the circle.
+ * @param node
+ */
+CiSECircle.prototype.moveOnCircleNodeInside = function(node) {
+
+    // Remove the node from on-circle nodes list and add it to in-circle
+    // nodes list
+    this.onCircleNodes.remove(node);
+    this.inCircleNodes.add(node);
+
+    // Re-adjust all order indexes of remaining on circle nodes.
+    for (let i = 0; i < this.onCircleNodes.length; i++)
+    {
+        let onCircleNode = this.onCircleNodes[i];
+
+        onCircleNode.getOnCircleNodeExt().setIndex(i);
+    }
+
+    // De-register extension
+    node.setAsNonOnCircleNode();
+
+    // calculateRadius
+    this.reCalculateCircleSizeAndRadius();
+
+    //calculateNodePositions
+    this.reCalculateNodeAnglesAndPositions();
+
+    node.setCenter(this.getParent().getCenterX(), this.getParent().getCenterY());
+};
+
+/**
+ * This method calculates the size and radius of this circle with respect
+ * to the sizes of the vertices and the node separation parameter.
+ */
+CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
+    let totalDiagonal = 0;
+    let onCircleNodes = this.getOnCircleNodes();
+
+    for (let i = 0; i < onCircleNodes.length; i++)
+    {
+        let node = onCircleNodes[i];
+
+        let temp = node.getWidth() * node.getWidth() + node.getHeight() * node.getHeight();
+        totalDiagonal += Math.sqrt(temp);
+    }
+
+    let layout = this.getGraphManager().getLayout();
+    let nodeSeparation = layout.getNodeSeparation();
+
+    let perimeter = totalDiagonal + this.getOnCircleNodes().length * nodeSeparation;
+    this.radius = perimeter / (2 * Math.PI);
+    this.calculateParentNodeDimension();
+};
+
+/**
+ * This method goes over all on-circle nodes and re-calculates their angles
+ * and corresponding positions. This method should be called when on-circle
+ * nodes (content or order) have been changed for this circle.
+ */
+CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
+    let layout = this.getGraphManager().getLayout();
+    let nodeSeparation = layout.getNodeSeparation();
+
+    // It is important that we sort these on-circle nodes in place.
+    let inOrderCopy = this.onCircleNodes;
+    inOrderCopy.sort(function(a, b) {
+        return a.getOnCircleNodeExt().getIndex() - b.getOnCircleNodeExt().getIndex();
+    });
+
+
+    let parentCenterX = this.getParent().getCenterX();
+    let parentCenterY = this.getParent().getCenterY();
+
+    for (let i = 0; i < inOrderCopy.length; i++)
+    {
+        let node = inOrderCopy[i];
+        let angle;
+
+        if (i === 0)
+        {
+            angle = 0.0;
+        }
+        else
+        {
+            let previousNode =  inOrderCopy[i - 1];
+
+            // => angle in radian = (2*PI)*(circular distance/(2*PI*r))
+            angle = previousNode.getOnCircleNodeExt().getAngle() +
+                    (node.getHalfTheDiagonal() + nodeSeparation + previousNode.getHalfTheDiagonal()) / this.radius;
+        }
+
+        node.getOnCircleNodeExt().setAngle(angle);
+        node.setCenter(parentCenterX + this.radius * Math.cos(angle),
+                       parentCenterY + this.radius * Math.sin(angle));
+    }
 };
 
 module.exports = CiSECircle;

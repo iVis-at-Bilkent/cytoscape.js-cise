@@ -86,6 +86,21 @@ class Layout extends ContinuousLayout {
     // TODO Layout-base -- root.setEstimatedSize(root.getBiggerDimension());
     ciseLayout.prepareCirclesForReversal();
     ciseLayout.calcIdealEdgeLengths(false);
+
+    // ------------------------------------------
+    // The variables to maintain the spring steps
+    // ------------------------------------------
+    // Index is there to iterate over steps
+    this.initializerIndex = 0;
+
+    // If the whole algorithm is finished
+    this.isDone = false;
+
+    // If the current step is finished
+    this.isStepDone = false;
+
+    // when to change to next step
+    this.timeToSwitchNextStep = true;
   }
 
   // run this each iteraction
@@ -103,7 +118,46 @@ class Layout extends ContinuousLayout {
       s.y = location.getCenterY();
     });
 
-    return true;
+    if(this.timeToSwitchNextStep){
+      switch ( this.initializerIndex ) {
+        case 0:
+          this.ciseLayout.step5Init();
+          break;
+        case 1:
+          this.ciseLayout.step3Init();
+          break;
+        case 2:
+          this.ciseLayout.step5Init();
+          break;
+        case 3:
+          this.ciseLayout.step4Init();
+          break;
+        case 4:
+          this.ciseLayout.calcIdealEdgeLengths(true);
+          this.ciseLayout.step5Init();
+          break;
+      }
+
+      this.initializerIndex++;
+      this.ciseLayout.iterations = 0;
+      this.ciseLayout.totalDisplacement = 1000;
+      this.timeToSwitchNextStep = false;
+    }
+
+    // Run one spring iteration
+    this.isStepDone = this.ciseLayout.runSpringEmbedderTick();
+
+    if( this.isStepDone && this.initializerIndex < 5) {
+      console.log('# of total iterations done: ' + this.ciseLayout.iterations);
+      this.timeToSwitchNextStep = true;
+    }
+
+    if( this.isStepDone && this.timeToSwitchNextStep === false) {
+      console.log('# of total iterations done: ' + this.ciseLayout.iterations);
+      this.isDone = true;
+    }
+
+    return this.isDone;
   }
 
   // run this function after the layout is done ticking

@@ -140,7 +140,7 @@ CiSEOnCircleNodeExt.prototype.getPrevNode = function(){
 
     if (nextNodeIndex === -1)
     {
-        nextNodeIndex = circle.getOnCircleNodes().size() - 1;
+        nextNodeIndex = circle.getOnCircleNodes().length - 1;
     }
 
     return circle.getOnCircleNodes()[nextNodeIndex];
@@ -158,7 +158,7 @@ CiSEOnCircleNodeExt.prototype.getNextNodeExt= function(){
  * This method returns the extension of the previous node according to
  * current ordering of the owner circle.
  */
-CiSEOnCircleNodeExt.prototype.prevNextNodeExt= function(){
+CiSEOnCircleNodeExt.prototype.prevNextNodeExt = function(){
     return this.getPrevNode().getOnCircleNodeExt();
 };
 
@@ -315,7 +315,7 @@ CiSEOnCircleNodeExt.prototype.getInterClusterIntersections = function(other) {
        let point2 = edge.getOtherEnd(this.ciseNode).getCenter();
 
        for(let j = 0; j < otherInterClusterEdges.length; j++){
-           let otherEdge = otherInterClusterEdges[i];
+           let otherEdge = otherInterClusterEdges[j];
            let point3 = other.ciseNode.getCenter();
            let point4 = otherEdge.getOtherEnd(other.ciseNode).getCenter();
 

@@ -139,7 +139,7 @@ CiSENode.prototype.move = function () {
     this.displacementY = this.getLimitedDisplacement(this.displacementY);
 
     // First propagate movement to children if it's a circle
-    if (this.getChild() !== null)
+    if (this.getChild() !== null && this.getChild() !== undefined )
     {
         // Take size into account when reflecting total force into movement!
         let noOfNodesOnCircle = this.getChild().getNodes().length;
@@ -159,7 +159,7 @@ CiSENode.prototype.move = function () {
     this.moveBy(this.displacementX, this.displacementY);
     layout.totalDisplacement += Math.abs(this.displacementX) + Math.abs(this.displacementY);
 
-    if (this.getChild() !== null)
+    if (this.getChild() !== null && this.getChild() !== undefined )
     {
         this.getChild().updateBounds(true);
     }

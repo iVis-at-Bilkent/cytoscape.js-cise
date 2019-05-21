@@ -4,127 +4,79 @@
  * in-cluster end nodes' orders in clockwise direction. This information is
  * calculated beforehand and stored in a matrix in each associated circle.
  *
- *
  */
 
-let Quicksort = require('avsdf-base').layoutBase.Quicksort;
-let LinkedList = require('avsdf-base').layoutBase.LinkedList;
-
-function CiSEInterClusterEdgeSort(ownerCircle)
-{
-    this.ownerCircle = ownerCircle;
-}
-
-CiSEInterClusterEdgeSort.prototype = Object.create();
-
-CiSEInterClusterEdgeSort.prototype.compare = function(a,b)
-{
-    let self = this;
-
-    if(b.getAngle() > a.getAngle())
-    {
-        return true;
+class CiSEInterClusterEdgeSort {
+    constructor(ownerCircle, A){
+        this.ownerCircle = ownerCircle;
+        this._quicksort(A, 0, A.length - 1);
     }
-    else if(b.getAngle() > a.getAngle())
-    {
-        if(a === b)
+
+    compareFunction(a, b){
+        if(b.getAngle() > a.getAngle())
+            return true;
+        else if(b.getAngle() === a.getAngle())
         {
-            return false;
+            if(a === b)
+            {
+                return false;
+            }
+            else
+            {
+                return this.ownerCircle.getOrder(
+                    this.ownerCircle.getThisEnd(a.getEdge()),
+                    this.ownerCircle.getThisEnd(b.getEdge()));
+            }
+
         }
         else
         {
-            return self.ownerCircle.getOrder(
-                self.ownerCircle.getThisEnd(a.getEdge()),
-                self.ownerCircle.getThisEnd(b.getEdge()));
+            return false;
         }
-
-    }
-    else
-    {
-        return false;
-    }
-};
-
-CiSEInterClusterEdgeSort.prototype.quicksort = function(list){
-
-    let self = this;
-
-    // input must be an instance of LinkedList class or must be an array in order to sort
-    if (! ( (list instanceof LinkedList) || ( list instanceof Array))){
-        return;
     }
 
-
-    if (list instanceof LinkedList){
-        end_index = list.size();
-    }
-    else if( list instanceof Array ){
-        end_index = list.length-1;
-    }
-
-    // Prevent empty lists or arrays.
-    if (end_index >= 0){
-        self.quicksort_between_indices(list, 0, end_index);
-    }
-
-};
-
-
-CiSEInterClusterEdgeSort.prototype.quicksort_between_indices = function(list, low, high){
-
-    let self = this;
-
-    // input must be an instance of LinkedList class or must be an array in order to sort
-    if (! ( (list instanceof LinkedList) || ( list instanceof Array))){
-        return;
-    }
-
-
-    let i = low;
-    let j = high;
-    let middleIndex = Math.floor( ( i + j ) / 2 );
-    let middle = Quicksort.get_object_at(list, middleIndex);
-
-    do
-    {
-
-        while (self.compare(Quicksort.get_object_at(list, i), middle)){
-
-            i++;
-
+    _quicksort(A, p, r){
+        if(p < r) {
+            let q = this._partition(A, p, r);
+            this._quicksort(A, p, q);
+            this._quicksort(A, q + 1, r);
         }
-
-        while (self.compare(middle, Quicksort.get_object_at(list, j))){
-
-            j--;
-
-        }
-
-        if (i <= j){
-
-            let temp = Quicksort.get_object_at(list, i);
-            Quicksort.set_object_at(list, i, Quicksort.get_object_at(list, j));
-            Quicksort.set_object_at(list, j, temp);
-            i++;
-            j--;
-
-        }
-
-    } while (i<=j);
-
-    if( low < j ){
-
-        self.quicksort_between_indices(list, low, j, comparison_fn);
-
     }
 
-    if( high > i){
+    _partition(A, p, r){
+        let x = this._get(A, p);
+        let i = p;
+        let j = r;
+        while(true){
+            while (this.compareFunction(x, this._get(A, j)))
+                j--;
+            while (this.compareFunction(this._get(A, i), x))
+                i++;
 
-        self.quicksort_between_indices(list, i, high, comparison_fn);
-
+            if (i < j){
+                this._swap(A, i, j);
+                i++;
+                j--;
+            }
+            else
+                return j;
+        }
     }
 
-};
+    _get(object, index){
+            return object[index];
+    }
+
+    _set(object, index, value){
+            object[index] = value;
+    }
+
+    _swap(A, i, j){
+        let temp = this._get(A, i);
+        this._set(A, i, this._get(A, j));
+        this._set(A, j, temp);
+    }
+}
 
 module.exports = CiSEInterClusterEdgeSort;
 

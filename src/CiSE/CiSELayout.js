@@ -34,13 +34,13 @@ const CiSEGraphManager = require('./CiSEGraphManager');
 const CiSECircle = require('./CiSECircle');
 const CiSENode = require('./CiSENode');
 const CiSEEdge = require('./CiSEEdge');
+const CiSEOnCircleNodePair = require('./CiSEOnCircleNodePair');
 
 let AVSDFConstants = require('avsdf-base').AVSDFConstants;
 const AVSDFLayout = require('avsdf-base').AVSDFLayout;
 
 const CoSELayout = require('cose-base').CoSELayout;
 const CoSEConstants = require('cose-base').CoSEConstants;
-
 
 // Constructor
 function CiSELayout()
@@ -85,32 +85,14 @@ function CiSELayout()
     /**
      * Holds the set of pairs swapped in the last swap phase.
      */
-    this.swappedPairsInLastIteration = {};
+    this.swappedPairsInLastIteration = [];
 
-    this.oldTotalDisplacement = 0.0;
-
-    // -----------------------------------------------------------------------------
-    // Section: Class constants
-    // -----------------------------------------------------------------------------
     /**
-     * Steps of layout
+     * Iterations in the runSpringEmbedderTicl function
      */
-    this.STEP_NOT_STARTED = 0;
-    this.STEP_1 = 1;
-    this.STEP_2 = 2;
-    this.STEP_3 = 3;
-    this.STEP_4 = 4;
-    this.STEP_5 = 5;
-
     this.iterations = 0;
 
-    /**
-     * Phases of a step
-     */
-    this.PHASE_NOT_STARTED = 0;
-    this.PHASE_SWAP_PREPERATION = 1;
-    this.PHASE_PERFORM_SWAP = 2;
-    this.PHASE_OTHER = 3;
+    this.oldTotalDisplacement = 0.0;
 }
 
 CiSELayout.prototype = Object.create(Layout.prototype);
@@ -119,6 +101,31 @@ for (let property in Layout)
 {
     CiSELayout[property] = Layout[property];
 }
+
+// -----------------------------------------------------------------------------
+// Section: Class constants
+// -----------------------------------------------------------------------------
+/**
+ * Steps of layout
+ */
+CiSELayout.STEP_NOT_STARTED = 0;
+CiSELayout.STEP_1 = 1;
+CiSELayout.STEP_2 = 2;
+CiSELayout.STEP_3 = 3;
+CiSELayout.STEP_4 = 4;
+CiSELayout.STEP_5 = 5;
+
+/**
+ * Phases of a step
+ */
+CiSELayout.PHASE_NOT_STARTED = 0;
+CiSELayout.PHASE_SWAP_PREPERATION = 1;
+CiSELayout.PHASE_PERFORM_SWAP = 2;
+CiSELayout.PHASE_OTHER = 3;
+
+// -----------------------------------------------------------------------------
+// Section: Class methods
+// -----------------------------------------------------------------------------
 
 /**
  * This method creates a new graph manager associated with this layout.
@@ -162,6 +169,15 @@ CiSELayout.prototype.newEdge = function(source,target, vEdge)
 {
     return new CiSEEdge(source, target, vEdge);
 };
+
+/**
+ * This method returns the node separation amount for this layout.
+ */
+CiSELayout.prototype.getNodeSeparation = function()
+{
+    return this.nodeSeparation;
+};
+
 
 /**
  * This method establishes the GraphManager object related to this layout. Each compound(LGraph) is CiSECircle except
@@ -570,7 +586,8 @@ CiSELayout.prototype.doStep2 = function(){
  * flipped (i.e. nodes are re-ordered in the reverse direction) if reversal
  * yields a better aligned neighborhood (w.r.t. its inter-graph edges).
  */
-CiSELayout.prototype.Step3Init = function(){
+CiSELayout.prototype.step3Init = function(){
+    console.log('Step 3 Initializing and Starting...');
     this.step = CiSELayout.STEP_3;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
@@ -582,10 +599,15 @@ CiSELayout.prototype.Step3Init = function(){
  * move by swapping without increasing crossing number but circles are not
  * allowed to be flipped.
  */
-CiSELayout.prototype.Step4Init = function() {
+CiSELayout.prototype.step4Init = function() {
+    console.log('Step 4 Initializing and Starting...');
     this.step = CiSELayout.STEP_4;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    for (let i = 0; i < this.graphManager.getOnCircleNodes().length ; i++)
+    {
+        this.graphManager.getOnCircleNodes()[i].getOnCircleNodeExt().updateSwappingConditions();
+    }
 };
 
 /**
@@ -594,10 +616,76 @@ CiSELayout.prototype.Step4Init = function() {
  * the location on their owner circle) and circles are not allowed to be
  * flipped.
  */
-CiSELayout.prototype.Step5Init = function(){
+CiSELayout.prototype.step5Init = function(){
+    console.log('Step 5 Initializing and Starting...');
     this.step = CiSELayout.STEP_5;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+};
+
+/**
+ * This method implements a spring embedder used by steps 3 thru 5 with
+ * potentially different parameters.
+ *
+ */
+CiSELayout.prototype.runSpringEmbedderTick = function (){
+    this.iterations++;
+
+    if ( (this.iterations % CiSEConstants.CONVERGENCE_CHECK_PERIOD) === 0)
+    {
+        // In step 4 make sure at least a 1/4 of max iters take place
+        let notTooEarly = this.step !== CiSELayout.STEP_4 || this.iterations > this.maxIterations / 4;
+
+        if ( notTooEarly && this.isConverged() )
+        {
+            return true;
+        }
+
+        this.coolingFactor = this.initialCoolingFactor *
+                            ( (this.maxIterations - this.iterations) / this.maxIterations );
+    }
+
+    this.totalDisplacement = 0;
+
+    if (this.step === CiSELayout.STEP_3)
+    {
+        if (this.iterations % CiSEConstants.REVERSE_PERIOD === 0)
+        {
+            this.checkAndReverseIfReverseIsBetter();
+        }
+    }
+    else if (this.step === CiSELayout.STEP_4)
+    {
+        // clear history every now and then
+        if (this.iterations % CiSEConstants.SWAP_HISTORY_CLEARANCE_PERIOD === 0)
+        {
+            this.swappedPairsInLastIteration = [];
+        }
+
+        // no of iterations in this swap period
+        let iterationInPeriod = this.iterations % CiSEConstants.SWAP_PERIOD;
+
+        if (iterationInPeriod >= CiSEConstants.SWAP_IDLE_DURATION)
+        {
+            this.phase = CiSELayout.PHASE_SWAP_PREPERATION;
+        }
+        else if (iterationInPeriod === 0)
+        {
+            this.phase = CiSELayout.PHASE_PERFORM_SWAP;
+        }
+        else
+        {
+            this.phase = CiSELayout.PHASE_OTHER;
+        }
+    }
+
+    this.calcSpringForces();
+    this.calcRepulsionForces();
+    //this.calcGravitationalForces();
+    this.calcTotalForces();
+    this.moveNodes();
+
+    return this.iterations >= this.maxIterations;
 };
 
 
@@ -923,7 +1011,292 @@ CiSELayout.prototype.calcTotalForces = function(){
     }
 };
 
+/**
+ * This method updates positions of each node at the end of an iteration.
+ * Also, it deals with swapping of two consecutive nodes on a circle in
+ * step 4.
+ */
+CiSELayout.prototype.moveNodes = function(){
+    if (this.phase !== CiSELayout.PHASE_PERFORM_SWAP)
+    {
+        let nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
 
+        // Simply move all non-on-circle nodes.
+        for (let i = 0; i < nonOnCircleNodes.length; i++)
+        {
+            nonOnCircleNodes[i].move();
 
+            // Also make required rotations for circles
+            if (nonOnCircleNodes[i].getChild() !== null && nonOnCircleNodes[i].getChild() !== undefined )
+            {
+                nonOnCircleNodes[i].getChild().rotate();
+            }
+        }
+
+        // Also move all in-circle nodes. Note that in-circle nodes will be
+        // empty if this option is not set, hence no negative effect on
+        // performance
+        let inCircleNodes = this.graphManager.getInCircleNodes();
+        let inCircleNode;
+
+        for (let i = 0; i < inCircleNodes.length; i++)
+        {
+            inCircleNode = inCircleNodes[i];
+            // TODO: workaround to force inner nodes to stay inside
+            inCircleNode.displacementX /= 20.0;
+            inCircleNode.displacementY /= 20.0;
+            inCircleNode.move();
+        }
+    } else {
+        // If in perform-swap phase of step 4, we have to look for swappings
+        // that do not increase edge crossings and is likely to decrease total
+        // energy.
+        let ciseOnCircleNodes = this.graphManager.getOnCircleNodes();
+        let size = ciseOnCircleNodes.length;
+
+        // Both nodes of a pair are out-nodes, not necessarilly safe due to
+        // inter-cluster edge crossings
+        // TODO It should be a max heap structure
+        let nonSafePairs = [];
+
+        // Pairs where one of the on circle nodes is an in-node; no problem
+        // swapping these
+        let safePairs = [];
+
+        // Nodes swapped in this round
+        let swappedNodes = [];
+
+        // Pairs swapped or prevented from being swapped in this round
+        let swappedPairs = [];
+
+        let firstNode;
+        let secondNode;
+        let firstNodeExt;
+        let secondNodeExt;
+        let firstNodeDisp;
+        let secondNodeDisp;
+        let discrepancy;
+        let inSameDirection;
+
+        // Check each node with its next node for swapping
+        for (let i = 0; i < size; i++) {
+            firstNode = ciseOnCircleNodes[i];
+            secondNode = firstNode.getOnCircleNodeExt().getNextNode();
+            firstNodeExt = firstNode.getOnCircleNodeExt();
+            secondNodeExt = secondNode.getOnCircleNodeExt();
+
+            // Ignore if the swap is to introduce new intra-edge crossings
+            if (!firstNodeExt.canSwapWithNext || !secondNodeExt.canSwapWithPrev)
+                continue;
+
+            firstNodeDisp = firstNodeExt.getDisplacementForSwap();
+            secondNodeDisp = secondNodeExt.getDisplacementForSwap();
+            discrepancy = firstNodeDisp - secondNodeDisp;
+
+            // Pulling in reverse directions, no swap
+            if (discrepancy < 0.0)
+                continue;
+
+            // Might swap, create safe or nonsafe node pairs
+            inSameDirection = (firstNodeDisp > 0 && secondNodeDisp > 0) || (firstNodeDisp < 0 && secondNodeDisp < 0);
+            let pair = new CiSEOnCircleNodePair(firstNode,
+                secondNode,
+                discrepancy,
+                inSameDirection);
+
+            // When both are out-nodes, nonsafe; otherwise, safe
+            if (firstNodeDisp === 0.0 || secondNodeDisp === 0.0)
+                safePairs.push(pair);
+            else
+                nonSafePairs.push(pair);
+        }
+
+            let nonSafePair;
+            let lookForSwap = true;
+            let rollback;
+
+            // TODO max heap -> extractMax
+            nonSafePairs.sort(function(a, b) {
+                return b.getDiscrepancy() - a.getDiscrepancy(); });
+
+            // Look for a nonsafe pair until we swap one
+            while (lookForSwap && nonSafePairs.length > 0)
+            {
+                // Pick the non safe pair that has the maximum discrepancy.
+                nonSafePair = nonSafePairs[nonSafePairs.length - 1];
+                firstNode = nonSafePair.getFirstNode();
+                secondNode = nonSafePair.getSecondNode();
+                firstNodeExt = firstNode.getOnCircleNodeExt();
+                secondNodeExt = secondNode.getOnCircleNodeExt();
+
+                // If this pair is swapped in previous swap phase, don't allow
+                // this swap. Also save it for the future as if it is actually
+                // swapped in order to prevent future oscilations
+                if (this.isSwappedPreviously(nonSafePair))
+                {
+                    nonSafePairs.pop();
+                    swappedPairs.push(nonSafePair);
+                    continue;
+                }
+
+                // Check for inter-cluster edge crossings before swapping.
+                let int1 = firstNodeExt.getInterClusterIntersections(secondNodeExt);
+
+                // Try a swap
+                nonSafePair.swap();
+                rollback = false;
+
+                // Then re-compute crossings
+                let int2 = firstNodeExt.getInterClusterIntersections(secondNodeExt);
+
+                // Possible cases regarding discrepancy:
+                // first  second  action
+                // +      +       both clockwise: might swap if disp > 0
+                // +      -       disp > 0: might swap
+                // -      -       both counter-clockwise: might swap if disp > 0
+                // -      +       disp <= 0: no swap
+
+                // Under following conditions roll swap back:
+                // - swap increases inter-cluster edge crossings
+                // - inter-cluster edge number is the same but pulling in the
+                // same direction or discrepancy is below pre-determined
+                // threshold (not enough for swap)
+
+                rollback = int2 > int1;
+
+                if (!rollback && int2 === int1)
+                {
+                    rollback =
+                        nonSafePair.inSameDirection() ||
+                        nonSafePair.getDiscrepancy() <
+                        CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP;
+                }
+
+                if (rollback)
+                {
+                    nonSafePair.swap();
+                    nonSafePairs.pop();
+                    continue;
+                }
+
+                console.log('Swap Happened -- Non-safe pair');
+                console.log(nonSafePair);
+
+                swappedNodes.push(nonSafePair.getFirstNode());
+                swappedNodes.push(nonSafePair.getSecondNode());
+                swappedPairs.push(nonSafePair);
+
+                // Swap performed, do not look for another nonsafe pair
+                lookForSwap = false;
+            }
+
+            // Now process all safe pairs
+            for ( let i = 0; i < safePairs.length; i ++){
+                let safePair = safePairs[i];
+
+                // Check if discrepancy is above the threshold (enough to swap)
+                if (safePair.inSameDirection() ||
+                    safePair.getDiscrepancy() <
+                    CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP) {
+                    continue;
+                }
+
+                // Check if they were already involved in a swap in this phase
+                if (swappedNodes.includes(safePair.getFirstNode()) ||
+                    swappedNodes.includes(safePair.getSecondNode())) {
+                    continue;
+                }
+
+                // Should be swapped if not previously swapped; so
+                // Check if they were previously swapped
+                if (!this.isSwappedPreviously(safePair))
+                {
+                    safePair.swap();
+                    console.log('Swap Happened -- afe pair');
+                    console.log(safePair);
+                    swappedNodes.push(safePair.getFirstNode());
+                    swappedNodes.push(safePair.getSecondNode());
+                }
+
+                // Mark swapped (even if not) to prevent future oscillations
+                swappedPairs.push(safePair);
+            }
+
+            // Update swap history
+            this.swappedPairsInLastIteration = [];
+            for (let i = 0; i < swappedPairs.length; i++)
+            {
+                this.swappedPairsInLastIteration.push(swappedPairs[i]);
+            }
+
+            // Reset all discrepancy values of on circle nodes.
+            let node;
+
+            for (let i = 0; i < size; i++)
+            {
+                node = ciseOnCircleNodes[i];
+                node.getOnCircleNodeExt().setDisplacementForSwap(0.0);
+            }
+
+    }
+};
+
+/*
+ * This method returns whether or not the input node pair was previously
+ * swapped.
+ */
+CiSELayout.prototype.isSwappedPreviously = function(pair) {
+    for(let i = 0; i < this.swappedPairsInLastIteration; i++) {
+        let swappedPair = this.swappedPairsInLastIteration[i];
+
+        if ((swappedPair.getFirstNode() === pair.getFirstNode() &&
+            swappedPair.getSecondNode() === pair.getSecondNode()) ||
+            (swappedPair.getSecondNode() === pair.getFirstNode() &&
+                swappedPair.getFirstNode() === pair.getSecondNode())) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+/**
+* This method tries to improve the edge crossing number by reversing a
+* cluster (i.e., the order of the nodes in the cluster such as C,B,A
+* instead of A,B,C). No more than one reversal is performed with each
+* execution. The decision is based on the global sequence alignment
+* heuristic (typically used in biological sequence alignment). A cluster
+* that was previsouly reversed is not a candidate for reversal to avoid
+* oscillations. It returns true if a reversal has been performed.
+*/
+CiSELayout.prototype.checkAndReverseIfReverseIsBetter = function () {
+    let gm = this.getGraphManager();
+
+    // For each cluster (in no particular order) check to see whether
+    // reversing the order of the nodes on the cluster could improve on
+    // inter-graph edge crossing number of that cluster.
+
+    let nodeIterator = gm.getRoot().getNodes();
+    let node;
+    let circle;
+
+    for (let i = 0; i < nodeIterator.length; i++)
+    {
+        node = nodeIterator[i];
+        circle = node.getChild();
+
+        if (circle != null &&
+            circle.getMayBeReversed() &&
+            circle.getNodes().length <= 52)
+        {
+            if (circle.checkAndReverseIfReverseIsBetter())
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+};
 
 module.exports = CiSELayout;
