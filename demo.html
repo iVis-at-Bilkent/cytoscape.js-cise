@@ -28,7 +28,7 @@
 			#cy {
 				position: absolute;
 				left: 0;
-				top: 60px;
+				top: 80px;
 				bottom: 0;
 				right: 0;
 				z-index: 999;
@@ -81,34 +81,38 @@
 			#layoutButton{
 				margin-left: 30px;
 			}
+
+			.line{
+				margin-bottom: 10px;
+			}
 		</style>
 	</head>
 
 	<body>
 		<h1>cytoscape-cise demo</h1>
 
+		<div class="line">
+			Animation Type:
+			<input type="radio" name="radio" id="end" class="radio" value="end" checked> End
+			<input type="radio" name="radio" id="during" class="radio" value="during"> During <br>
+		</div>
 		<button onclick="document.getElementById('file-input').click();">Import Graphml</button>
 		<input id="file-input" type="file" name="name" style="display: none;" />
 		<button id="layoutButton" type="button">Run CiSE Layout</button>
 
 		<div id="cy"></div>
 
-		<!--
 		<div class='my-legend'>
 			<div class='legend-title'>Representation of Node Colors</div>
 			<div class='legend-scale'>
-				<ul class='legend-labels'>
+				<ul class='legend-labels' id="legend">
+					<li id="unclusteredLegend"><span style='background:#756D76;'></span>Unclustered</li>
 					<li><span style='background:#3a7ecf;'></span>Cluster #: 0</li>
 					<li><span style='background:#37CF47;'></span>Cluster #: 1</li>
-					<li><span style='background:#CF2727;'></span>Cluster #: 2</li>
-					<li><span style='background:#CA34CF;'></span>Cluster #: 3</li>
-					<li><span style='background:#CF7B13;'></span>Cluster #: 4</li>
-					<li><span style='background:#CFCE00;'></span>Cluster #: 5</li>
-					<li><span style='background:#756D76;'></span>Unclustered</li>
 				</ul>
 			</div>
 		</div>
-		-->
+
 	</body>
 </html>
 
@@ -199,7 +203,8 @@
 					{ data: { source: 'z', target: 'b', directed: false} },
 					{ data: { source: 'x', target: 'z', directed: false} }
 				]
-			}
+			},
+			wheelSensitivity: 0.5,
 		});
 	});
 
@@ -251,7 +256,12 @@
 							return clusterColors[i];
 
 					return '#756D76';
-				}
+				},
+				'width': 'data(width)',
+				'height': 'data(height)',
+				'shape': function (ele) {
+					let str = '' + ele.data('shape');
+					return str.toLowerCase();}
 			})
 					.selector('edge').style({
 				'curve-style': 'bezier',
@@ -270,15 +280,36 @@
 			})
 
 					.update();
-		}
 
+			// Update Legend----
+			// Clear Legend
+			let legend = document.getElementById('legend');
+			let child = legend.lastElementChild;
+			while (child && child.id !== "unclusteredLegend") {
+				legend.removeChild(child);
+				child = legend.lastElementChild;
+			}
+
+			// Repopulate Legend
+			for(let i = 0; i < clusterColors.length; i++) {
+				var li = document.createElement('li');
+				var el_span = document.createElement('span');
+				el_span.style.background = clusterColors[i];
+				let textnode = document.createTextNode("Cluster #: " + i);
+				li.appendChild(el_span);
+				li.appendChild(textnode);
+				document.getElementById('legend').appendChild(li);
+			}
+		}
 	});
 
 	document.getElementById("layoutButton").addEventListener("click", function(){
+		// Update Cytoscape Layout and Run It
+		let anim = !document.getElementById("end").checked;
 		var layout = cy.layout({
 			name: 'cise',
 			DEFAULT_NODE_SEPARATION: 40,
-			during: true,
+			animate: anim,
 			clusters: arrayOfClusterArrays,
 			refresh: 1
 		});

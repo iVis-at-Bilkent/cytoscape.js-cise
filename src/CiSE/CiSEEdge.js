@@ -32,6 +32,11 @@ for(let property in FDLayoutEdge)
     CiSEEdge[property] = FDLayoutEdge[property];
 }
 
+CiSEEdge.prototype.isIntraEdge = function(){
+    return this.isIntraCluster;
+};
+
+
 // -----------------------------------------------------------------------------
 // Section: Remaining methods
 // -----------------------------------------------------------------------------

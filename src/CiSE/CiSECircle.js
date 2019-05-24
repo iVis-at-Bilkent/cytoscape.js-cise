@@ -156,12 +156,12 @@ CiSECircle.prototype.getIntraClusterEdges = function()
         this.intraClusterEdges = [];
         let allEdges = this.getEdges();
         allEdges.forEach(function(edge){
-            if(edge.isIntraCluster)
+            if(edge.isIntraEdge())
                 self.intraClusterEdges.push(edge);
         });
     }
 
-    return this.interClusterEdges;
+    return this.intraClusterEdges;
 };
 
 // -----------------------------------------------------------------------------

@@ -360,11 +360,11 @@ CiSECircle.prototype.getIntraClusterEdges = function () {
             this.intraClusterEdges = [];
             var allEdges = this.getEdges();
             allEdges.forEach(function (edge) {
-                if (edge.isIntraCluster) self.intraClusterEdges.push(edge);
+                if (edge.isIntraEdge()) self.intraClusterEdges.push(edge);
             });
         }
 
-    return this.interClusterEdges;
+    return this.intraClusterEdges;
 };
 
 // -----------------------------------------------------------------------------
@@ -886,6 +886,10 @@ CiSEEdge.prototype = Object.create(FDLayoutEdge.prototype);
 for (var property in FDLayoutEdge) {
     CiSEEdge[property] = FDLayoutEdge[property];
 }
+
+CiSEEdge.prototype.isIntraEdge = function () {
+    return this.isIntraCluster;
+};
 
 // -----------------------------------------------------------------------------
 // Section: Remaining methods
@@ -3335,7 +3339,7 @@ module.exports = Layout;
 // general default options for force-directed layout
 
 module.exports = Object.freeze({
-  animate: true, // whether to show the layout as it's running; special 'end' value makes the layout animate like a discrete layout
+  animate: false, // whether to show the layout as it's running; special 'end' value makes the layout animate like a discrete layout
   refresh: 10, // number of ticks per frame; higher is faster but more jerky
   maxIterations: 2500, // max iterations before the layout will bail out
   maxSimulationTime: 4000, // max length in ms to run the layout
