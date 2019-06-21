@@ -2,13 +2,13 @@
 A generic continuous layout class
 */
 
-const assign = require('../assign');
+const assign = require('../../assign');
 const defaults = require('./defaults');
 const makeBoundingBox = require('./make-bb');
 const { setInitialPositionState, refreshPositions, getNodePositionData } = require('./position');
 const { multitick } = require('./tick');
 
-class ContinuousLayout {
+class Layout {
   constructor( options ){
     let o = this.options = assign( {}, defaults, options );
 
@@ -43,7 +43,7 @@ class ContinuousLayout {
 
     s.tickIndex = 0;
     s.firstUpdate = true;
-
+    s.startTime = Date.now();
     s.running = true;
 
     s.currentBoundingBox = makeBoundingBox( s.boundingBox, s.cy );
@@ -135,8 +135,6 @@ class ContinuousLayout {
         l.emit('layoutstop');
       };
 
-      s.startTime = Date.now();
-
       l.emit('layoutstart');
 
       s.nodes.forEach( n => {
@@ -146,9 +144,19 @@ class ContinuousLayout {
 
       frame(); // kick off
     } else {
-      multitick( s );
+      let done = false;
+      let onNotDone = () => {};
+      let onDone = () => done = true;
 
-      s.eles.layoutPositions( this, s, node => getNodePositionData( node, s ) );
+      while( !done ){
+        multitick( s, onNotDone, onDone );
+      }
+
+      s.eles.layoutPositions( this, s, node => {
+        let pd = getNodePositionData( node, s );
+
+        return { x: pd.x, y: pd.y };
+      } );
     }
 
     l.postrun( s );
@@ -171,4 +179,5 @@ class ContinuousLayout {
   }
 }
 
-module.exports = ContinuousLayout;
+module.exports = Layout;
+

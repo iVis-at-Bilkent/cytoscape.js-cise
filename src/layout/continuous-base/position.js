@@ -1,4 +1,4 @@
-const assign = require('../assign');
+const assign = require('../../assign');
 
 let setInitialPositionState = function( node, state ){
   let p = node.position();
