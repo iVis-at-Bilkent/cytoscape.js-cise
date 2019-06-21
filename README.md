@@ -12,6 +12,8 @@ Please cite the following when using this layout:
 
 M. Belviranli, A. Dilek and U. Dogrusoz, "[CiSE: A Circular Spring Embedder Layout Algorithm](https://dlnext.acm.org/doi/abs/10.1109/TVCG.2012.178)" in IEEE Transactions on Visualization & Computer Graphics, vol. 19, no. 06, pp. 953-966, 2013.
 
+<p align="center"><img src="demoPic.png" width="500" height="500"></p>
+
 ## Dependencies
 
  * Cytoscape.js: ^3.2.0
@@ -68,11 +70,12 @@ var default = {
     name = 'cise',
     
     // ClusterInfo can be a 2D array contaning node id's or a function that returns cluster ids. 
-    // For the 2D array option, the index of the array indicates the cluster ID for all elements in the collection at 
-    // that index. Unclustered nodes must NOT be present in this 2D array of clusters.
+    // For the 2D array option, the index of the array indicates the cluster ID for all elements in 
+    // the collection at that index. Unclustered nodes must NOT be present in this array of clusters.
     // 
-    // For the function, it would be given a Cytoscape node and it is expected to return a cluster id corresponding to 
-    // that node. Returning negative numbers, null or undefined is fine for unclustered nodes.  
+    // For the function, it would be given a Cytoscape node and it is expected to return a cluster id  
+    // corresponding to that node. Returning negative numbers, null or undefined is fine for unclustered
+    // nodes.  
     // e.g
     // Array:                                     OR          function(node){
     //  [ ['n1','n2','n3'],                                       ...
@@ -97,7 +100,7 @@ var default = {
     animationEasing: undefined,
     
     // Whether to fit the viewport to the repositioned graph
-    // true : Fits at end of layout for animate:false or animate:'end'; fits on each frame for animate:true
+    // true : Fits at end of layout for animate:false or animate:'end'
     fit: true,
     
     // Padding in rendered co-ordinates around the layout
