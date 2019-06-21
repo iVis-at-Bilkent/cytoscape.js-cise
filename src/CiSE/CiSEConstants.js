@@ -19,8 +19,6 @@ for( let prop in FDLayoutConstants)
 // Section: CiSE layout user options
 // -----------------------------------------------------------------------------
 
-CiSEConstants.INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL;
-
 CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
 
 // Amount of separation of nodes on the associated circle
@@ -34,7 +32,7 @@ CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = 1.4;
 CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
 
 // Max percentage of the nodes in a circle that can be inside the circle
-CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.2;
+CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
 
 // -----------------------------------------------------------------------------
 // Section: CiSE layout remaining constants

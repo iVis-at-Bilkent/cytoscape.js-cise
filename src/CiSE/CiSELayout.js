@@ -28,19 +28,16 @@ let Layout = require('avsdf-base').layoutBase.FDLayout;
 let HashMap = require('avsdf-base').layoutBase.HashMap;
 const PointD = require('avsdf-base').layoutBase.PointD;
 const DimensionD = require('avsdf-base').layoutBase.DimensionD;
-
+let AVSDFConstants = require('avsdf-base').AVSDFConstants;
+const AVSDFLayout = require('avsdf-base').AVSDFLayout;
+const CoSELayout = require('cose-base').CoSELayout;
+const CoSEConstants = require('cose-base').CoSEConstants;
 const CiSEConstants = require('./CiSEConstants');
 const CiSEGraphManager = require('./CiSEGraphManager');
 const CiSECircle = require('./CiSECircle');
 const CiSENode = require('./CiSENode');
 const CiSEEdge = require('./CiSEEdge');
 const CiSEOnCircleNodePair = require('./CiSEOnCircleNodePair');
-
-let AVSDFConstants = require('avsdf-base').AVSDFConstants;
-const AVSDFLayout = require('avsdf-base').AVSDFLayout;
-
-const CoSELayout = require('cose-base').CoSELayout;
-const CoSEConstants = require('cose-base').CoSEConstants;
 
 // Constructor
 function CiSELayout()
@@ -93,6 +90,12 @@ function CiSELayout()
     this.iterations = 0;
 
     this.oldTotalDisplacement = 0.0;
+
+    /**
+     * Cooling Factor Variables
+     */
+    this.coolingCycle = 0;
+    this.maxCoolingCycle = this.maxIterations / CiSEConstants.CONVERGENCE_CHECK_PERIOD;
 }
 
 CiSELayout.prototype = Object.create(Layout.prototype);
@@ -202,9 +205,33 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
         idToCytoscapeNode.put(nodes[i].data('id'), nodes[i]);
     }
 
+    // If it is a function just change it
+    if (typeof clusters === "function") {
+        let cIDs = [];
+        let temp = [];
+
+        for(let i = 0; i < nodes.length; i++){
+            let cID = clusters(nodes[i]);
+            if (cID > 0 && cID !== null && cID !== undefined ) {
+                let index = cIDs.indexOf( cID );
+                if (index > -1) {
+                    temp[index].push(nodes[i].data('id'));
+                }
+                else{
+                    cIDs.push(cID);
+                    temp.push([nodes[i].data('id')]);
+                }
+            }
+        }
+        clusters = temp;
+    }
+
     // lets add the nodes in clusters to the GraphManager
     for(let i = 0; i < clusters.length; i++)
     {
+        if(clusters[i].length === 0)
+            continue;
+
         // Create a CiSENode for the cluster
         let clusterNode = this.newNode(null);
 
@@ -549,8 +576,6 @@ CiSELayout.prototype.doStep2 = function(){
         }
     }
 
-    //this.reorderIncidentEdges(ciseNodeToCoseNode, coseEdgeToCiseEdges);
-
     // Run CoSELayout
     coseLayout.runLayout();
 
@@ -587,10 +612,10 @@ CiSELayout.prototype.doStep2 = function(){
  * yields a better aligned neighborhood (w.r.t. its inter-graph edges).
  */
 CiSELayout.prototype.step3Init = function(){
-    console.log('Step 3 Initializing and Starting...');
     this.step = CiSELayout.STEP_3;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    this.coolingCycle = 0;
 };
 
 /**
@@ -600,7 +625,6 @@ CiSELayout.prototype.step3Init = function(){
  * allowed to be flipped.
  */
 CiSELayout.prototype.step4Init = function() {
-    console.log('Step 4 Initializing and Starting...');
     this.step = CiSELayout.STEP_4;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
@@ -608,6 +632,7 @@ CiSELayout.prototype.step4Init = function() {
     {
         this.graphManager.getOnCircleNodes()[i].getOnCircleNodeExt().updateSwappingConditions();
     }
+    this.coolingCycle = 0;
 };
 
 /**
@@ -617,10 +642,10 @@ CiSELayout.prototype.step4Init = function() {
  * flipped.
  */
 CiSELayout.prototype.step5Init = function(){
-    console.log('Step 5 Initializing and Starting...');
     this.step = CiSELayout.STEP_5;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    this.coolingCycle = 0;
 };
 
 /**
@@ -629,7 +654,9 @@ CiSELayout.prototype.step5Init = function(){
  *
  */
 CiSELayout.prototype.runSpringEmbedderTick = function (){
+    // This function uses iterations but FDLayout uses this.totalIterations
     this.iterations++;
+    this.totalIterations = this.iterations;
 
     if ( (this.iterations % CiSEConstants.CONVERGENCE_CHECK_PERIOD) === 0)
     {
@@ -641,11 +668,10 @@ CiSELayout.prototype.runSpringEmbedderTick = function (){
             return true;
         }
 
-        // Linear
-       // this.coolingFactor = this.initialCoolingFactor * ( (this.maxIterations - this.iterations * 5 ) / this.maxIterations );
+        // Cooling factor descend function
+        //this.coolingFactor = this.initialCoolingFactor * Math.pow( 1 - 0.005 , this.iterations) ;
 
-        // Exponental Decay
-        this.coolingFactor = this.initialCoolingFactor * Math.pow( 1 - 0.005 , this.iterations) ;
+       this.coolingFactor = this.initialCoolingFactor * ((this.maxIterations - this.iterations) / this.maxIterations);
     }
 
     this.totalDisplacement = 0;
@@ -684,149 +710,11 @@ CiSELayout.prototype.runSpringEmbedderTick = function (){
 
     this.calcSpringForces();
     this.calcRepulsionForces();
-    //this.calcGravitationalForces();
+    this.calcGravitationalForces();
     this.calcTotalForces();
     this.moveNodes();
 
     return this.iterations >= this.maxIterations;
-};
-
-
-/**
- * This method sorts incident lists of cose nodes created earlier according
- * to node ordering inside corresponding cise circles, if any. For each cose
- * edge we have one or possibly more cise edges. Let's look up their indices
- * and somehow do a smart calculation of their average. So if this cluster A
- * is connected to cluster B via on-circle nodes indexed at 3, 6, and 12,
- * then we may imagine that cluster B should be aligned with the node
- * indexed at 7 [=(3+6+12)/3]. The input parameters reference the hash maps
- * maintaining correspondence between cise and cose nodes (1-1) and cose and
- * cise edges (1-many), respectively.
- **/
-CiSELayout.prototype.reorderIncidentEdges = function(ciseNodeToCoseNode, coseEdgeToCiseEdges){
-
-    let nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
-
-    for (let i = 0; i < nonOnCircleNodes.length; i++)
-    {
-        if (nonOnCircleNodes[i].getChild() == null)
-        {
-            continue;
-        }
-
-        let ciseCircle = nonOnCircleNodes[i].getChild();
-        let mod = ciseCircle.getOnCircleNodes().length;
-        let coseNode = ciseNodeToCoseNode.get(ciseCircle.getParent());
-        let incidentCoseEdges =  coseNode.getEdges();
-        let indexMapping = new HashMap();
-
-        for (let j = 0; j < incidentCoseEdges.length; j++) {
-            let coseEdge = incidentCoseEdges[j];
-            let edgeIndices = [];
-            let ciseEdges = coseEdgeToCiseEdges.get(coseEdge);
-            ciseEdges.forEach(function (ciseEdge) {
-                let edgeIndex = -1;
-                if (ciseEdge.getSource().getOwner() === ciseCircle) {
-                    edgeIndex = ciseEdge.getSource().getOnCircleNodeExt().getIndex();
-                } else if (ciseEdge.getTarget().getOwner() === ciseCircle) {
-                    edgeIndex = ciseEdge.getTarget().getOnCircleNodeExt().getIndex();
-                }
-
-                edgeIndices.push(edgeIndex);
-            });
-
-            edgeIndices.sort();
-
-            // When averaging indices, we need to make sure it falls to the
-            // correct side, simple averaging will not always work. For
-            // instance, if indices are 0, 1, and 5 for a 6 node circle /
-            // cluster, we want the average to be 0 [=(0+1+(-1))/3] as
-            // opposed to 2 [=(0+1+5)/3]. We need to calculate the largest
-            // gap between adjacent indices (1 to 5 in this case) here.
-            // Indices after the start of the largest gap are to be adjusted
-            // (by subtracting mod from each), so the average falls into the
-            // correct side.
-
-            let indexLargestGapStart = -1;
-            let largestGap = -1;
-            let gap;
-
-            // calculate largest gap and its starting index
-
-            let indexIter = edgeIndices[Symbol.iterator]();
-            let edgeIndex = null;
-            let prevEdgeIndex = null;
-            let firstEdgeIndex = -1;
-            let edgeIndexPos = -1;
-
-            for (let z = 0; z < edgeIndices.length; z++){
-                prevEdgeIndex = edgeIndex;
-                edgeIndex =  edgeIndices[z];
-                edgeIndexPos++;
-
-                if (prevEdgeIndex !== null)
-                {
-                    gap = edgeIndex - prevEdgeIndex;
-
-                    if (gap > largestGap)
-                    {
-                        largestGap = gap;
-                        indexLargestGapStart = edgeIndexPos - 1;
-                    }
-                }
-                else
-                {
-                    firstEdgeIndex = edgeIndex;
-                }
-            }
-
-            if (firstEdgeIndex !== -1 && (firstEdgeIndex + mod - edgeIndex) > largestGap)
-            {
-                largestGap = firstEdgeIndex + mod - edgeIndex;
-                indexLargestGapStart = edgeIndexPos;
-            }
-
-            // adjust indices after the start of the gap (beginning with the
-            // index that marks the end of the largest gap)
-
-            let edgeCount = edgeIndices.length;
-
-            if (largestGap > 0)
-            {
-                let index;
-
-                for (let k = indexLargestGapStart + 1; k < edgeCount; k++)
-                {
-                    index = edgeIndices[k];
-                    edgeIndices[k] = index - mod;
-                }
-            }
-
-            // Sum up indices
-            let averageIndex;
-            let totalIndex = 0;
-
-            for (let z = 0; z < edgeIndices.length; z++)
-            {
-                edgeIndex = edgeIndices[z];
-                totalIndex += edgeIndex;
-            }
-
-            averageIndex = totalIndex / edgeCount;
-
-            if (averageIndex < 0)
-            {
-                averageIndex += mod;
-            }
-
-            indexMapping.put(coseEdge, averageIndex);
-        }
-
-        incidentCoseEdges.sort(function(a, b) {
-            return indexMapping.get(a) - indexMapping.get(b);
-        });
-
-    }
 };
 
 /**
@@ -859,7 +747,6 @@ CiSELayout.prototype.calcIdealEdgeLengths = function(isPolishingStep){
     for(let i = 0; i < lEdges.length; i++){
         let edge = lEdges[i];
 
-        // TODO Another calculation is in Chilay comments
         // Loosen in the polishing step to avoid overlaps
         if(isPolishingStep)
             edge.idealLength = 1.5 * this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;
@@ -947,7 +834,7 @@ CiSELayout.prototype.calcRepulsionForces = function() {
  * nodes move with their owner; thus they are not applied separate gravity.
  */
 CiSELayout.prototype.calcGravitationalForces = function () {
-    if (!this.getGraphManager().getRoot().isConnected()) {
+    if (!this.graphManager.rootGraph.isConnected) {
         let lNodes = this.graphManager.getNonOnCircleNodes();
 
         for (let i = 0; i < lNodes.length; i++)
@@ -959,7 +846,7 @@ CiSELayout.prototype.calcGravitationalForces = function () {
 
     // Calculate gravitational forces to keep in-circle nodes in the center
     // TODO: is this really helping or necessary?
-    let lNodes = this.getInCircleNodes();
+    let lNodes = this.graphManager.getInCircleNodes();
 
     for (let i = 0; i < lNodes.length; i++)
     {
@@ -1185,9 +1072,6 @@ CiSELayout.prototype.moveNodes = function(){
                     continue;
                 }
 
-                console.log('Swap Happened -- Non-safe pair');
-                console.log(nonSafePair);
-
                 swappedNodes.push(nonSafePair.getFirstNode());
                 swappedNodes.push(nonSafePair.getSecondNode());
                 swappedPairs.push(nonSafePair);
@@ -1218,8 +1102,6 @@ CiSELayout.prototype.moveNodes = function(){
                 if (!this.isSwappedPreviously(safePair))
                 {
                     safePair.swap();
-                    console.log('Swap Happened -- safe pair');
-                    console.log(safePair);
                     swappedNodes.push(safePair.getFirstNode());
                     swappedNodes.push(safePair.getSecondNode());
                 }
@@ -1243,7 +1125,6 @@ CiSELayout.prototype.moveNodes = function(){
                 node = ciseOnCircleNodes[i];
                 node.getOnCircleNodeExt().setDisplacementForSwap(0.0);
             }
-
     }
 };
 
@@ -1303,6 +1184,265 @@ CiSELayout.prototype.checkAndReverseIfReverseIsBetter = function () {
     }
 
     return false;
+};
+
+/**
+ * This method goes over all circles and tries to find nodes that can be
+ * moved inside the circle. Inner nodes are found and moved inside one at a
+ * time. This process continues for a circle until either there is no inner
+ * node or reached max inner nodes for that circle.
+ */
+CiSELayout.prototype.findAndMoveInnerNodes = function (){
+    if (!this.allowNodesInsideCircle)
+    {
+        return;
+    }
+
+    let graphs = this.graphManager.getGraphs();
+    for (let i = 0; i < graphs.length; i++){
+        let ciseCircle = graphs[i];
+
+        // Count inner nodes not to exceed user defined maximum
+        let innerNodeCount = 0;
+
+        if (ciseCircle !== this.getGraphManager().getRoot())
+        {
+            // It is a user parameter, retrieve it.
+            let maxInnerNodes = ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle;
+
+            // Look for an inner node and move it inside
+            let innerNode = this.findInnerNode(ciseCircle);
+
+            while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes)
+            {
+                this.moveInnerNode(innerNode);
+                innerNodeCount++;
+
+                if (innerNodeCount < maxInnerNodes)
+                {
+                    innerNode = this.findInnerNode(ciseCircle);
+                }
+            }
+        }
+    }
+};
+
+/**
+ * This method finds an inner node (if any) in the given circle.
+ */
+CiSELayout.prototype.findInnerNode = function (ciseCircle){
+    let innerNode = null;
+    let onCircleNodeCount = ciseCircle.getOnCircleNodes().length;
+
+    // First sort the nodes in the circle according to their degrees.
+    let sortedNodes = ciseCircle.getOnCircleNodes();
+    sortedNodes.sort(function(a, b) {
+        return a.getEdges().length - b.getEdges().length;
+    });
+
+    // Evaluate each node as possible candidate
+    for (let i = onCircleNodeCount - 1; i >= 0 && innerNode == null; i--)
+    {
+        let candidateNode = sortedNodes[i];
+
+        // Out nodes cannot be moved inside, so just skip them
+        if (candidateNode.getOnCircleNodeExt().getInterClusterEdges().length !== 0)
+        {
+            continue;
+        }
+
+        let circleSegment = this.findMinimalSpanningSegment(candidateNode);
+
+        // Skip nodes with no neighbors (circle segment will be empty)
+        if (circleSegment.length === 0)
+        {
+            continue;
+        }
+
+        // For all nodes in the spanning circle segment, check if that node
+        // is connected to another node on the circle with an index diff of
+        // greater than 1 (i.e. connected to a non-immediate neighbor)
+
+        let connectedToNonImmediate = false;
+
+        for(let i = 0; i < circleSegment.length; i++) {
+            let spanningNode = circleSegment[i];
+
+            // Performance improvement: stop iteration if this cannot be
+            // an inner node.
+            if (connectedToNonImmediate) {
+                break;
+            }
+
+            // Look for neighbors of this spanning node.
+            let neighbors = spanningNode.getNeighborsList();
+            for (let j = 0; j < neighbors.length; j++) {
+                let neighborOfSpanningNode = neighbors[j];
+
+                // In some case we don't need to look at the neighborhood
+                // relationship. We won't care the neighbor of spanning node
+                // if:
+                // - It is the candidate node
+                // - It is on another circle
+                // - It is already an inner node.
+                if (neighborOfSpanningNode !== candidateNode &&
+                    neighborOfSpanningNode.getOwner() === ciseCircle &&
+                    neighborOfSpanningNode.getOnCircleNodeExt() != null &&
+                    neighborOfSpanningNode.getOnCircleNodeExt() != undefined) {
+
+                    let spanningIndex = spanningNode.getOnCircleNodeExt().getIndex();
+                    let neighborOfSpanningIndex = neighborOfSpanningNode.getOnCircleNodeExt().getIndex();
+
+                    // Calculate the index difference between spanning node
+                    // and its neighbor
+                    let indexDiff = spanningIndex - neighborOfSpanningIndex;
+                    indexDiff += onCircleNodeCount; // Get rid of neg. index
+                    indexDiff %= onCircleNodeCount; // Mod it
+
+                    // Give one more chance, try reverse order of nodes
+                    // just in case.
+                    if (indexDiff > 1) {
+                        indexDiff = neighborOfSpanningIndex - spanningIndex;
+                        indexDiff += onCircleNodeCount; // Get rid of neg.
+                        indexDiff %= onCircleNodeCount; // Mod it
+                    }
+
+                    // If the diff is still greater 1, this spanning node
+                    // has a non-immediate neighbor. Sorry but you cannot
+                    // be an inner node. Poor candidate node !!!
+                    if (indexDiff > 1) {
+                        connectedToNonImmediate = true;
+                        // stop computation.
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If neighbors of candidate node is not connect to a non-immediate
+        // neighbor that this can be an inner node.
+        if (!connectedToNonImmediate)
+        {
+            innerNode = candidateNode;
+        }
+
+    }
+
+    return innerNode;
+};
+
+/**
+ * This method safely removes inner node from circle perimeter (on-circle)
+ * and moves them inside their owner circles (as in-circle nodes)
+ */
+CiSELayout.prototype.moveInnerNode = function (innerNode)
+{
+    let ciseCircle = innerNode.getOwner();
+
+    // Remove the node from the circle first. This forces circle to
+    // re-adjust its geometry. A costly operation indeed...
+    ciseCircle.moveOnCircleNodeInside(innerNode);
+
+    // We need to also remove the inner node from on-circle nodes list
+    // of the associated graph manager
+    let onCircleNodesList = this.graphManager.getOnCircleNodes();
+    let index = onCircleNodesList.indexOf(innerNode);
+    if( index > -1){
+        onCircleNodesList.splice(index, 1);
+    }
+
+    this.graphManager.inCircleNodes.push(innerNode);
+};
+
+/**
+ * This method returns a circular segment (ordered array of nodes),
+ * which is the smallest segment that spans neighbors of the given node.
+ */
+CiSELayout.prototype.findMinimalSpanningSegment = function (node)
+{
+    let segment = [];
+
+    // First create an ordered neighbors list which includes given node and
+    // its neighbors and ordered according to their indexes in this circle.
+    let orderedNeigbors = node.getOnCircleNeighbors();
+
+    if (orderedNeigbors.length === 0)
+    {
+        return segment;
+    }
+
+    orderedNeigbors.sort(function(a, b) {
+        return a.getOnCircleNodeExt().getIndex() - b.getOnCircleNodeExt().getIndex();
+    });
+
+    // According to the order found, find the start and end nodes of the
+    // segment by testing each (order adjacent) neighbor pair.
+    let orderedNodes = node.getOwner().getOnCircleNodes();
+    orderedNodes.sort(function(a, b) {
+        return a.getOnCircleNodeExt().getIndex() - b.getOnCircleNodeExt().getIndex();
+    });
+
+    let shortestSegmentStartNode = null;
+    let shortestSegmentEndNode = null;
+    let shortestSegmentLength = orderedNodes.length;
+    let segmentLength = orderedNodes.length;
+    let neighSize = orderedNeigbors.length;
+    let i;
+    let j;
+    let tempSegmentStartNode;
+    let tempSegmentEndNode;
+    let tempSegmentLength;
+
+    for (i = 0; i < neighSize; i++)
+    {
+        j = ((i - 1) + neighSize) % neighSize;
+
+        tempSegmentStartNode = orderedNeigbors[i];
+        tempSegmentEndNode = orderedNeigbors[j];
+
+        tempSegmentLength =
+            (tempSegmentEndNode.getOnCircleNodeExt().getIndex() - tempSegmentStartNode.getOnCircleNodeExt().getIndex() +
+                segmentLength) % segmentLength + 1;
+
+        if (tempSegmentLength < shortestSegmentLength)
+        {
+            shortestSegmentStartNode = tempSegmentStartNode;
+            shortestSegmentEndNode = tempSegmentEndNode;
+            shortestSegmentLength = tempSegmentLength;
+        }
+    }
+
+    // After finding start and end nodes for the segment, simply go over
+    // ordered nodes and create an ordered list of nodes in the segment
+
+    let segmentEndReached = false;
+    let currentNode = shortestSegmentStartNode;
+
+    while (!segmentEndReached)
+    {
+        if (currentNode !== node)
+        {
+            segment.push(currentNode);
+        }
+
+        if (currentNode === shortestSegmentEndNode)
+        {
+            segmentEndReached = true;
+        }
+        else
+        {
+            let nextIndex = currentNode.getOnCircleNodeExt().getIndex() + 1;
+
+            if (nextIndex === orderedNodes.length)
+            {
+                nextIndex = 0;
+            }
+
+            currentNode = orderedNodes[nextIndex];
+        }
+    }
+
+    return segment;
 };
 
 module.exports = CiSELayout;

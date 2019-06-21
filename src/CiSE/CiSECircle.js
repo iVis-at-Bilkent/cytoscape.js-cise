@@ -14,8 +14,7 @@ let CiSEConstants = require('./CiSEConstants');
 let CiSEInterClusterEdgeInfo = require('./CiSEInterClusterEdgeInfo');
 let CiSEInterClusterEdgeSort = require('./CiSEInterClusterEdgeSort');
 
-function CiSECircle(parent, graphMgr, vNode)
-{
+function CiSECircle(parent, graphMgr, vNode) {
     LGraph.call(this, parent, graphMgr, vNode);
 
     // Holds the intra-cluster edges of this circle, initially it is null. It
@@ -63,8 +62,7 @@ function CiSECircle(parent, graphMgr, vNode)
 
 CiSECircle.prototype = Object.create(LGraph.prototype);
 
-for ( let prop in LGraph )
-{
+for ( let prop in LGraph ) {
     CiSECircle[prop] = LGraph[prop];
 }
 
@@ -72,38 +70,32 @@ for ( let prop in LGraph )
 // Section: Accessors and mutators
 // -----------------------------------------------------------------------------
 // This method returns the radius of this circle.
-CiSECircle.prototype.setRadius = function(radius)
-{
+CiSECircle.prototype.setRadius = function(radius) {
     this.radius = radius;
 };
 
 // This method sets the radius of this circle.
-CiSECircle.prototype.getRadius = function()
-{
+CiSECircle.prototype.getRadius = function() {
     return this.radius;
 };
 
 // This method returns nodes that don't have neighbors outside this circle.
-CiSECircle.prototype.getInNodes = function()
-{
+CiSECircle.prototype.getInNodes = function() {
     return this.inNodes;
 };
 
 // This method returns nodes that have neighbors outside this circle.
-CiSECircle.prototype.getOutNodes = function()
-{
+CiSECircle.prototype.getOutNodes = function() {
     return this.outNodes;
 };
 
 // This method returns nodes that don't have neighbors outside this circle.
-CiSECircle.prototype.getOnCircleNodes = function()
-{
+CiSECircle.prototype.getOnCircleNodes = function() {
     return this.onCircleNodes;
 };
 
 // This method returns nodes that don't have neighbors outside this circle.
-CiSECircle.prototype.getInCircleNodes = function()
-{
+CiSECircle.prototype.getInCircleNodes = function() {
     return this.inCircleNodes;
 };
 
@@ -126,8 +118,7 @@ CiSECircle.prototype.getChildAt = function(index){
  * This method returns the inter-cluster edges whose one end is in this
  * cluster.
  */
-CiSECircle.prototype.getInterClusterEdges = function()
-{
+CiSECircle.prototype.getInterClusterEdges = function() {
     let self = this;
 
     if (this.interClusterEdges === null) //If this is called the first time
@@ -147,8 +138,7 @@ CiSECircle.prototype.getInterClusterEdges = function()
 /**
  * This method returns the intra cluster edges of this circle
  */
-CiSECircle.prototype.getIntraClusterEdges = function()
-{
+CiSECircle.prototype.getIntraClusterEdges = function() {
     let self = this;
 
     if (this.intraClusterEdges === null) //If this is called the first time
@@ -174,8 +164,7 @@ CiSECircle.prototype.getIntraClusterEdges = function()
 // factor (must be >= 1 to ensure all nodes are enclosed within its
 // rectangle) of the largest dimension (width or height) of on-circle nodes
 // so that it completely encapsulates the nodes on this circle.
-CiSECircle.prototype.calculateParentNodeDimension = function()
-{
+CiSECircle.prototype.calculateParentNodeDimension = function() {
     let self = this;
 
     let maxOnCircleNodeDimension = Number.MIN_SAFE_INTEGER;
@@ -531,7 +520,7 @@ CiSECircle.prototype.checkAndReverseIfReverseIsBetter = function(){
     }
 
 
-    // Now sort the inter-cluster edges w.r.t. their angles TODO
+    // Now sort the inter-cluster edges w.r.t. their angles
     let edgeSorter = new CiSEInterClusterEdgeSort(this, interClusterEdgeInfos);
 
     // Form an array for order of neighboring nodes of this cluster
@@ -564,8 +553,6 @@ CiSECircle.prototype.checkAndReverseIfReverseIsBetter = function(){
         {
             if (alignmentScoreReversed > alignmentScoreCurrent)
             {
-                console.log("Reversed Cluster: ");
-                console.log(this);
                 this.reverseNodes();
                 this.setMayNotBeReversed();
                 return true;
@@ -617,8 +604,13 @@ CiSECircle.prototype.moveOnCircleNodeInside = function(node) {
 
     // Remove the node from on-circle nodes list and add it to in-circle
     // nodes list
-    this.onCircleNodes.remove(node);
-    this.inCircleNodes.add(node);
+    // Make sure it has not been already moved to the out node list
+    let index = this.onCircleNodes.indexOf(node);
+    if( index > -1){
+        this.onCircleNodes.splice(index, 1);
+    }
+
+    this.inCircleNodes.push(node);
 
     // Re-adjust all order indexes of remaining on circle nodes.
     for (let i = 0; i < this.onCircleNodes.length; i++)
@@ -678,7 +670,6 @@ CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
     inOrderCopy.sort(function(a, b) {
         return a.getOnCircleNodeExt().getIndex() - b.getOnCircleNodeExt().getIndex();
     });
-
 
     let parentCenterX = this.getParent().getCenterX();
     let parentCenterY = this.getParent().getCenterY();

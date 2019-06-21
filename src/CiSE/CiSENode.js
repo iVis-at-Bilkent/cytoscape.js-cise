@@ -99,13 +99,13 @@ CiSENode.prototype.getLimitedDisplacement = function( displacement ){
  * in-circle.
  */
 CiSENode.prototype.getOnCircleNeighbors = function(){
-    let neighbors = this.getNeighborsList();
+    let neighbors = Array.from(this.getNeighborsList());
     let onCircleNeighbors = [];
 
     for(let i = 0; i < neighbors.length; i++){
         let node = neighbors[i];
 
-        if( node.getOnCircleNodeExt() !== null && node.getClusterID().equals(this.getClusterID()) )
+        if( node.getOnCircleNodeExt() !== null && node.getClusterId() === this.getClusterId() )
             onCircleNeighbors.push(node);
     }
 

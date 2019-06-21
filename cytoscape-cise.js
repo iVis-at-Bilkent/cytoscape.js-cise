@@ -108,8 +108,6 @@ for (var prop in FDLayoutConstants) {
 // Section: CiSE layout user options
 // -----------------------------------------------------------------------------
 
-CiSEConstants.INCREMENTAL = FDLayoutConstants.DEFAULT_INCREMENTAL;
-
 CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
 
 // Amount of separation of nodes on the associated circle
@@ -123,7 +121,7 @@ CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = 1.4;
 CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
 
 // Max percentage of the nodes in a circle that can be inside the circle
-CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.2;
+CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
 
 // -----------------------------------------------------------------------------
 // Section: CiSE layout remaining constants
@@ -686,7 +684,7 @@ CiSECircle.prototype.checkAndReverseIfReverseIsBetter = function () {
         }
     }
 
-    // Now sort the inter-cluster edges w.r.t. their angles TODO
+    // Now sort the inter-cluster edges w.r.t. their angles
     var edgeSorter = new CiSEInterClusterEdgeSort(this, interClusterEdgeInfos);
 
     // Form an array for order of neighboring nodes of this cluster
@@ -715,8 +713,6 @@ CiSECircle.prototype.checkAndReverseIfReverseIsBetter = function () {
 
         if (alignmentScoreReversed !== -1) {
             if (alignmentScoreReversed > alignmentScoreCurrent) {
-                console.log("Reversed Cluster: ");
-                console.log(this);
                 this.reverseNodes();
                 this.setMayNotBeReversed();
                 return true;
@@ -765,8 +761,13 @@ CiSECircle.prototype.moveOnCircleNodeInside = function (node) {
 
     // Remove the node from on-circle nodes list and add it to in-circle
     // nodes list
-    this.onCircleNodes.remove(node);
-    this.inCircleNodes.add(node);
+    // Make sure it has not been already moved to the out node list
+    var index = this.onCircleNodes.indexOf(node);
+    if (index > -1) {
+        this.onCircleNodes.splice(index, 1);
+    }
+
+    this.inCircleNodes.push(node);
 
     // Re-adjust all order indexes of remaining on circle nodes.
     for (var i = 0; i < this.onCircleNodes.length; i++) {
@@ -1209,19 +1210,16 @@ var Layout = __webpack_require__(0).layoutBase.FDLayout;
 var HashMap = __webpack_require__(0).layoutBase.HashMap;
 var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
-
+var AVSDFConstants = __webpack_require__(0).AVSDFConstants;
+var AVSDFLayout = __webpack_require__(0).AVSDFLayout;
+var CoSELayout = __webpack_require__(3).CoSELayout;
+var CoSEConstants = __webpack_require__(3).CoSEConstants;
 var CiSEConstants = __webpack_require__(1);
 var CiSEGraphManager = __webpack_require__(7);
 var CiSECircle = __webpack_require__(5);
 var CiSENode = __webpack_require__(11);
 var CiSEEdge = __webpack_require__(6);
 var CiSEOnCircleNodePair = __webpack_require__(13);
-
-var AVSDFConstants = __webpack_require__(0).AVSDFConstants;
-var AVSDFLayout = __webpack_require__(0).AVSDFLayout;
-
-var CoSELayout = __webpack_require__(3).CoSELayout;
-var CoSEConstants = __webpack_require__(3).CoSEConstants;
 
 // Constructor
 function CiSELayout() {
@@ -1273,6 +1271,12 @@ function CiSELayout() {
     this.iterations = 0;
 
     this.oldTotalDisplacement = 0.0;
+
+    /**
+     * Cooling Factor Variables
+     */
+    this.coolingCycle = 0;
+    this.maxCoolingCycle = this.maxIterations / CiSEConstants.CONVERGENCE_CHECK_PERIOD;
 }
 
 CiSELayout.prototype = Object.create(Layout.prototype);
@@ -1377,14 +1381,36 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
         idToCytoscapeNode.put(nodes[i].data('id'), nodes[i]);
     }
 
+    // If it is a function just change it
+    if (typeof clusters === "function") {
+        var cIDs = [];
+        var temp = [];
+
+        for (var _i = 0; _i < nodes.length; _i++) {
+            var cID = clusters(nodes[_i]);
+            if (cID > 0 && cID !== null && cID !== undefined) {
+                var index = cIDs.indexOf(cID);
+                if (index > -1) {
+                    temp[index].push(nodes[_i].data('id'));
+                } else {
+                    cIDs.push(cID);
+                    temp.push([nodes[_i].data('id')]);
+                }
+            }
+        }
+        clusters = temp;
+    }
+
     // lets add the nodes in clusters to the GraphManager
 
-    var _loop = function _loop(_i) {
+    var _loop = function _loop(_i2) {
+        if (clusters[_i2].length === 0) return 'continue';
+
         // Create a CiSENode for the cluster
         var clusterNode = _this.newNode(null);
 
         // ClusterID ∈ {0,1,2,..,n(# of clusters)}
-        clusterNode.setClusterId(_i);
+        clusterNode.setClusterId(_i2);
 
         // Add it rootGraph
         rootGraph.add(clusterNode);
@@ -1397,7 +1423,7 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
         circle.margin = circle.margin + 15;
 
         // Move each node of the cluster into this circle
-        clusters[_i].forEach(function (nodeID) {
+        clusters[_i2].forEach(function (nodeID) {
             var cytoNode = idToCytoscapeNode.get(nodeID);
             var dimensions = cytoNode.layoutDimensions({
                 nodeDimensionsIncludeLabels: false
@@ -1405,7 +1431,7 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
             // Adding a node into the circle
             var ciseNode = self.newCiSEOnCircleNode(new PointD(cytoNode.position('x') - dimensions.w / 2, cytoNode.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h)));
             ciseNode.setId(nodeID);
-            ciseNode.setClusterId(_i);
+            ciseNode.setClusterId(_i2);
             circle.getOnCircleNodes().push(ciseNode);
             circle.add(ciseNode);
 
@@ -1417,27 +1443,29 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
         });
     };
 
-    for (var _i = 0; _i < clusters.length; _i++) {
-        _loop(_i);
+    for (var _i2 = 0; _i2 < clusters.length; _i2++) {
+        var _ret = _loop(_i2);
+
+        if (_ret === 'continue') continue;
     }
 
     // Now, add unclustered nodes to the GraphManager
 
-    var _loop2 = function _loop2(_i2) {
+    var _loop2 = function _loop2(_i3) {
         var clustered = false;
 
         clusters.forEach(function (cluster) {
-            if (cluster.includes(nodes[_i2].data('id'))) clustered = true;
+            if (cluster.includes(nodes[_i3].data('id'))) clustered = true;
         });
 
         if (!clustered) {
-            var cytoNode = nodes[_i2];
+            var cytoNode = nodes[_i3];
             var dimensions = cytoNode.layoutDimensions({
                 nodeDimensionsIncludeLabels: false
             });
             var _CiSENode = _this.newNode(new PointD(cytoNode.position('x') - dimensions.w / 2, cytoNode.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h)));
             _CiSENode.setClusterId(-1);
-            _CiSENode.setId(nodes[_i2].data('id'));
+            _CiSENode.setId(nodes[_i3].data('id'));
             rootGraph.add(_CiSENode);
 
             // Map the node
@@ -1445,13 +1473,13 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
         }
     };
 
-    for (var _i2 = 0; _i2 < nodes.length; _i2++) {
-        _loop2(_i2);
+    for (var _i3 = 0; _i3 < nodes.length; _i3++) {
+        _loop2(_i3);
     }
 
     // Lastly, add all edges
-    for (var _i3 = 0; _i3 < edges.length; _i3++) {
-        var e = edges[_i3];
+    for (var _i4 = 0; _i4 < edges.length; _i4++) {
+        var e = edges[_i4];
         var sourceNode = idToLNode[e.data("source")];
         var targetNode = idToLNode[e.data("target")];
         var sourceClusterID = sourceNode.getClusterId();
@@ -1476,11 +1504,11 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
     var onCircleNodes = [];
     var nonOnCircleNodes = [];
     var allNodes = this.graphManager.getAllNodes();
-    for (var _i4 = 0; _i4 < allNodes.length; _i4++) {
-        if (allNodes[_i4].getOnCircleNodeExt()) {
-            onCircleNodes.push(allNodes[_i4]);
+    for (var _i5 = 0; _i5 < allNodes.length; _i5++) {
+        if (allNodes[_i5].getOnCircleNodeExt()) {
+            onCircleNodes.push(allNodes[_i5]);
         } else {
-            nonOnCircleNodes.push(allNodes[_i4]);
+            nonOnCircleNodes.push(allNodes[_i5]);
         }
     }
 
@@ -1502,9 +1530,9 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
             var _circle = sourceNode.getOwner();
 
             // Make sure it has not been already moved to the out node list
-            var index = _circle.getInNodes().indexOf(sourceNode);
-            if (index > -1) {
-                _circle.getInNodes().splice(index, 1);
+            var _index = _circle.getInNodes().indexOf(sourceNode);
+            if (_index > -1) {
+                _circle.getInNodes().splice(_index, 1);
                 _circle.getOutNodes().push(sourceNode);
             }
         }
@@ -1513,9 +1541,9 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters)
             var _circle2 = targetNode.getOwner();
 
             // Make sure it has not been already moved to the out node list
-            var _index = _circle2.getInNodes().indexOf(targetNode);
-            if (_index > -1) {
-                _circle2.getInNodes().splice(_index, 1);
+            var _index2 = _circle2.getInNodes().indexOf(targetNode);
+            if (_index2 > -1) {
+                _circle2.getInNodes().splice(_index2, 1);
                 _circle2.getOutNodes().push(targetNode);
             }
         }
@@ -1547,8 +1575,8 @@ CiSELayout.prototype.doStep1 = function () {
             var clusteredNodes = graph.getOnCircleNodes();
 
             // Create corresponding AVSDF nodes in current cluster
-            for (var _i5 = 0; _i5 < clusteredNodes.length; _i5++) {
-                var ciseOnCircleNode = clusteredNodes[_i5];
+            for (var _i6 = 0; _i6 < clusteredNodes.length; _i6++) {
+                var ciseOnCircleNode = clusteredNodes[_i6];
 
                 var avsdfNode = avsdfLayout.newNode(null);
                 var loc = ciseOnCircleNode.getLocation();
@@ -1563,8 +1591,8 @@ CiSELayout.prototype.doStep1 = function () {
             // For each edge, create a corresponding AVSDF edge if its both ends
             // are in this cluster.
             var allEdges = this.getAllEdges();
-            for (var _i6 = 0; _i6 < allEdges.length; _i6++) {
-                var edge = allEdges[_i6];
+            for (var _i7 = 0; _i7 < allEdges.length; _i7++) {
+                var edge = allEdges[_i7];
 
                 if (clusteredNodes.includes(edge.getSource()) && clusteredNodes.includes(edge.getTarget())) {
                     var avsdfSource = ciseToAvsdf.get(edge.getSource());
@@ -1580,15 +1608,15 @@ CiSELayout.prototype.doStep1 = function () {
 
             // Do post-processing
             var sortedByDegreeList = avsdfLayout.initPostProcess();
-            for (var _i7 = 0; _i7 < sortedByDegreeList.length; _i7++) {
-                avsdfLayout.oneStepPostProcess(sortedByDegreeList[_i7]);
+            for (var _i8 = 0; _i8 < sortedByDegreeList.length; _i8++) {
+                avsdfLayout.oneStepPostProcess(sortedByDegreeList[_i8]);
             }
             avsdfLayout.updateNodeAngles();
             avsdfLayout.updateNodeCoordinates();
 
             // Reflect changes back to CiSENode's
-            for (var _i8 = 0; _i8 < clusteredNodes.length; _i8++) {
-                var _ciseOnCircleNode = clusteredNodes[_i8];
+            for (var _i9 = 0; _i9 < clusteredNodes.length; _i9++) {
+                var _ciseOnCircleNode = clusteredNodes[_i9];
                 var _avsdfNode = ciseToAvsdf.get(_ciseOnCircleNode);
                 var _loc = _avsdfNode.getLocation();
                 _ciseOnCircleNode.setLocation(_loc.x, _loc.y);
@@ -1671,14 +1699,14 @@ CiSELayout.prototype.doStep2 = function () {
 
     // Used for preventing duplicate edge creation between two cose nodes
     var nodePairs = new Array(newCoSENodes.length);
-    for (var _i9 = 0; _i9 < nodePairs.length; _i9++) {
-        nodePairs[_i9] = new Array(newCoSENodes.length);
+    for (var _i10 = 0; _i10 < nodePairs.length; _i10++) {
+        nodePairs[_i10] = new Array(newCoSENodes.length);
     }
 
     // Traverse through edges and create cose edges for inter-cluster ones.
     var allEdges = this.graphManager.getAllEdges();
-    for (var _i10 = 0; _i10 < allEdges.length; _i10++) {
-        var ciseEdge = allEdges[_i10];
+    for (var _i11 = 0; _i11 < allEdges.length; _i11++) {
+        var ciseEdge = allEdges[_i11];
         var sourceCise = ciseEdge.getSource();
         var targetCise = ciseEdge.getTarget();
 
@@ -1718,15 +1746,13 @@ CiSELayout.prototype.doStep2 = function () {
         }
     }
 
-    //this.reorderIncidentEdges(ciseNodeToCoseNode, coseEdgeToCiseEdges);
-
     // Run CoSELayout
     coseLayout.runLayout();
 
     // Reflect changes back to cise nodes
     // First update all non-on-circle nodes.
-    for (var _i11 = 0; _i11 < nonOnCircleNodes.length; _i11++) {
-        var _ciseNode = nonOnCircleNodes[_i11];
+    for (var _i12 = 0; _i12 < nonOnCircleNodes.length; _i12++) {
+        var _ciseNode = nonOnCircleNodes[_i12];
         var coseNode = ciseNodeToCoseNode.get(_ciseNode);
         var _loc2 = coseNode.getLocation();
         _ciseNode.setLocation(_loc2.x, _loc2.y);
@@ -1737,8 +1763,8 @@ CiSELayout.prototype.doStep2 = function () {
 
     var onCircleNodes = this.graphManager.getOnCircleNodes();
 
-    for (var _i12 = 0; _i12 < onCircleNodes.length; _i12++) {
-        var _ciseNode2 = onCircleNodes[_i12];
+    for (var _i13 = 0; _i13 < onCircleNodes.length; _i13++) {
+        var _ciseNode2 = onCircleNodes[_i13];
         var _loc3 = _ciseNode2.getLocation();
         var parentLoc = _ciseNode2.getOwner().getParent().getLocation();
         _ciseNode2.setLocation(_loc3.x + parentLoc.x, _loc3.y + parentLoc.y);
@@ -1753,10 +1779,10 @@ CiSELayout.prototype.doStep2 = function () {
  * yields a better aligned neighborhood (w.r.t. its inter-graph edges).
  */
 CiSELayout.prototype.step3Init = function () {
-    console.log('Step 3 Initializing and Starting...');
     this.step = CiSELayout.STEP_3;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    this.coolingCycle = 0;
 };
 
 /**
@@ -1766,13 +1792,13 @@ CiSELayout.prototype.step3Init = function () {
  * allowed to be flipped.
  */
 CiSELayout.prototype.step4Init = function () {
-    console.log('Step 4 Initializing and Starting...');
     this.step = CiSELayout.STEP_4;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
     for (var i = 0; i < this.graphManager.getOnCircleNodes().length; i++) {
         this.graphManager.getOnCircleNodes()[i].getOnCircleNodeExt().updateSwappingConditions();
     }
+    this.coolingCycle = 0;
 };
 
 /**
@@ -1782,10 +1808,10 @@ CiSELayout.prototype.step4Init = function () {
  * flipped.
  */
 CiSELayout.prototype.step5Init = function () {
-    console.log('Step 5 Initializing and Starting...');
     this.step = CiSELayout.STEP_5;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    this.coolingCycle = 0;
 };
 
 /**
@@ -1794,7 +1820,9 @@ CiSELayout.prototype.step5Init = function () {
  *
  */
 CiSELayout.prototype.runSpringEmbedderTick = function () {
+    // This function uses iterations but FDLayout uses this.totalIterations
     this.iterations++;
+    this.totalIterations = this.iterations;
 
     if (this.iterations % CiSEConstants.CONVERGENCE_CHECK_PERIOD === 0) {
         // In step 4 make sure at least a 1/4 of max iters take place
@@ -1804,11 +1832,10 @@ CiSELayout.prototype.runSpringEmbedderTick = function () {
             return true;
         }
 
-        // Linear
-        // this.coolingFactor = this.initialCoolingFactor * ( (this.maxIterations - this.iterations * 5 ) / this.maxIterations );
+        // Cooling factor descend function
+        //this.coolingFactor = this.initialCoolingFactor * Math.pow( 1 - 0.005 , this.iterations) ;
 
-        // Exponental Decay
-        this.coolingFactor = this.initialCoolingFactor * Math.pow(1 - 0.005, this.iterations);
+        this.coolingFactor = this.initialCoolingFactor * ((this.maxIterations - this.iterations) / this.maxIterations);
     }
 
     this.totalDisplacement = 0;
@@ -1837,146 +1864,11 @@ CiSELayout.prototype.runSpringEmbedderTick = function () {
 
     this.calcSpringForces();
     this.calcRepulsionForces();
-    //this.calcGravitationalForces();
+    this.calcGravitationalForces();
     this.calcTotalForces();
     this.moveNodes();
 
     return this.iterations >= this.maxIterations;
-};
-
-/**
- * This method sorts incident lists of cose nodes created earlier according
- * to node ordering inside corresponding cise circles, if any. For each cose
- * edge we have one or possibly more cise edges. Let's look up their indices
- * and somehow do a smart calculation of their average. So if this cluster A
- * is connected to cluster B via on-circle nodes indexed at 3, 6, and 12,
- * then we may imagine that cluster B should be aligned with the node
- * indexed at 7 [=(3+6+12)/3]. The input parameters reference the hash maps
- * maintaining correspondence between cise and cose nodes (1-1) and cose and
- * cise edges (1-many), respectively.
- **/
-CiSELayout.prototype.reorderIncidentEdges = function (ciseNodeToCoseNode, coseEdgeToCiseEdges) {
-
-    var nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
-
-    var _loop3 = function _loop3(i) {
-        if (nonOnCircleNodes[i].getChild() == null) {
-            return 'continue';
-        }
-
-        var ciseCircle = nonOnCircleNodes[i].getChild();
-        var mod = ciseCircle.getOnCircleNodes().length;
-        var coseNode = ciseNodeToCoseNode.get(ciseCircle.getParent());
-        var incidentCoseEdges = coseNode.getEdges();
-        var indexMapping = new HashMap();
-
-        var _loop4 = function _loop4(j) {
-            var coseEdge = incidentCoseEdges[j];
-            var edgeIndices = [];
-            var ciseEdges = coseEdgeToCiseEdges.get(coseEdge);
-            ciseEdges.forEach(function (ciseEdge) {
-                var edgeIndex = -1;
-                if (ciseEdge.getSource().getOwner() === ciseCircle) {
-                    edgeIndex = ciseEdge.getSource().getOnCircleNodeExt().getIndex();
-                } else if (ciseEdge.getTarget().getOwner() === ciseCircle) {
-                    edgeIndex = ciseEdge.getTarget().getOnCircleNodeExt().getIndex();
-                }
-
-                edgeIndices.push(edgeIndex);
-            });
-
-            edgeIndices.sort();
-
-            // When averaging indices, we need to make sure it falls to the
-            // correct side, simple averaging will not always work. For
-            // instance, if indices are 0, 1, and 5 for a 6 node circle /
-            // cluster, we want the average to be 0 [=(0+1+(-1))/3] as
-            // opposed to 2 [=(0+1+5)/3]. We need to calculate the largest
-            // gap between adjacent indices (1 to 5 in this case) here.
-            // Indices after the start of the largest gap are to be adjusted
-            // (by subtracting mod from each), so the average falls into the
-            // correct side.
-
-            var indexLargestGapStart = -1;
-            var largestGap = -1;
-            var gap = void 0;
-
-            // calculate largest gap and its starting index
-
-            var indexIter = edgeIndices[Symbol.iterator]();
-            var edgeIndex = null;
-            var prevEdgeIndex = null;
-            var firstEdgeIndex = -1;
-            var edgeIndexPos = -1;
-
-            for (var z = 0; z < edgeIndices.length; z++) {
-                prevEdgeIndex = edgeIndex;
-                edgeIndex = edgeIndices[z];
-                edgeIndexPos++;
-
-                if (prevEdgeIndex !== null) {
-                    gap = edgeIndex - prevEdgeIndex;
-
-                    if (gap > largestGap) {
-                        largestGap = gap;
-                        indexLargestGapStart = edgeIndexPos - 1;
-                    }
-                } else {
-                    firstEdgeIndex = edgeIndex;
-                }
-            }
-
-            if (firstEdgeIndex !== -1 && firstEdgeIndex + mod - edgeIndex > largestGap) {
-                largestGap = firstEdgeIndex + mod - edgeIndex;
-                indexLargestGapStart = edgeIndexPos;
-            }
-
-            // adjust indices after the start of the gap (beginning with the
-            // index that marks the end of the largest gap)
-
-            var edgeCount = edgeIndices.length;
-
-            if (largestGap > 0) {
-                var index = void 0;
-
-                for (var k = indexLargestGapStart + 1; k < edgeCount; k++) {
-                    index = edgeIndices[k];
-                    edgeIndices[k] = index - mod;
-                }
-            }
-
-            // Sum up indices
-            var averageIndex = void 0;
-            var totalIndex = 0;
-
-            for (var _z = 0; _z < edgeIndices.length; _z++) {
-                edgeIndex = edgeIndices[_z];
-                totalIndex += edgeIndex;
-            }
-
-            averageIndex = totalIndex / edgeCount;
-
-            if (averageIndex < 0) {
-                averageIndex += mod;
-            }
-
-            indexMapping.put(coseEdge, averageIndex);
-        };
-
-        for (var j = 0; j < incidentCoseEdges.length; j++) {
-            _loop4(j);
-        }
-
-        incidentCoseEdges.sort(function (a, b) {
-            return indexMapping.get(a) - indexMapping.get(b);
-        });
-    };
-
-    for (var i = 0; i < nonOnCircleNodes.length; i++) {
-        var _ret3 = _loop3(i);
-
-        if (_ret3 === 'continue') continue;
-    }
 };
 
 /**
@@ -2008,15 +1900,14 @@ CiSELayout.prototype.calcIdealEdgeLengths = function (isPolishingStep) {
     for (var i = 0; i < lEdges.length; i++) {
         var edge = lEdges[i];
 
-        // TODO Another calculation is in Chilay comments
         // Loosen in the polishing step to avoid overlaps
         if (isPolishingStep) edge.idealLength = 1.5 * this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;else edge.idealLength = this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;
     }
 
     // Update in-nodes edge's lengths
     var lNodes = this.graphManager.getInCircleNodes();
-    for (var _i13 = 0; _i13 < lNodes.length; _i13++) {
-        var node = lNodes[_i13];
+    for (var _i14 = 0; _i14 < lNodes.length; _i14++) {
+        var node = lNodes[_i14];
 
         node.getEdges().forEach(function (edge) {
             edge.idealLength = CiSEConstants.DEFAULT_INNER_EDGE_LENGTH;
@@ -2065,8 +1956,8 @@ CiSELayout.prototype.calcRepulsionForces = function () {
     // We need the calculate repulsion forces for in-circle nodes as well
     // to keep them inside circle.
     var inCircleNodes = this.graphManager.getInCircleNodes();
-    for (var _i14 = 0; _i14 < inCircleNodes.length; _i14++) {
-        var inCircleNode = inCircleNodes[_i14];
+    for (var _i15 = 0; _i15 < inCircleNodes.length; _i15++) {
+        var inCircleNode = inCircleNodes[_i15];
         var ownerCircle = inCircleNode.getOwner();
 
         //TODO: inner nodes repulse on-circle nodes as well, not desired!
@@ -2074,8 +1965,8 @@ CiSELayout.prototype.calcRepulsionForces = function () {
         // of this inner node.
 
         var childNodes = ownerCircle.getNodes();
-        for (var _i15 = 0; _i15 < childNodes.length; _i15++) {
-            var childCiSENode = childNodes[_i15];
+        for (var _i16 = 0; _i16 < childNodes.length; _i16++) {
+            var childCiSENode = childNodes[_i16];
 
             if (childCiSENode !== inCircleNode) {
                 this.calcRepulsionForce(inCircleNode, childCiSENode);
@@ -2089,7 +1980,7 @@ CiSELayout.prototype.calcRepulsionForces = function () {
  * nodes move with their owner; thus they are not applied separate gravity.
  */
 CiSELayout.prototype.calcGravitationalForces = function () {
-    if (!this.getGraphManager().getRoot().isConnected()) {
+    if (!this.graphManager.rootGraph.isConnected) {
         var _lNodes = this.graphManager.getNonOnCircleNodes();
 
         for (var i = 0; i < _lNodes.length; i++) {
@@ -2100,10 +1991,10 @@ CiSELayout.prototype.calcGravitationalForces = function () {
 
     // Calculate gravitational forces to keep in-circle nodes in the center
     // TODO: is this really helping or necessary?
-    var lNodes = this.getInCircleNodes();
+    var lNodes = this.graphManager.getInCircleNodes();
 
-    for (var _i16 = 0; _i16 < lNodes.length; _i16++) {
-        var _node = lNodes[_i16];
+    for (var _i17 = 0; _i17 < lNodes.length; _i17++) {
+        var _node = lNodes[_i17];
         this.calcGravitationalForce(_node);
     }
 };
@@ -2135,8 +2026,8 @@ CiSELayout.prototype.calcTotalForces = function () {
     }
 
     var onCircleNodes = this.graphManager.getOnCircleNodes();
-    for (var _i17 = 0; _i17 < onCircleNodes.length; _i17++) {
-        var _node2 = onCircleNodes[_i17];
+    for (var _i18 = 0; _i18 < onCircleNodes.length; _i18++) {
+        var _node2 = onCircleNodes[_i18];
         var parentNode = _node2.getOwner().getParent();
         var values = _node2.getOwner().decomposeForce(_node2);
 
@@ -2180,8 +2071,8 @@ CiSELayout.prototype.moveNodes = function () {
         var inCircleNodes = this.graphManager.getInCircleNodes();
         var inCircleNode = void 0;
 
-        for (var _i18 = 0; _i18 < inCircleNodes.length; _i18++) {
-            inCircleNode = inCircleNodes[_i18];
+        for (var _i19 = 0; _i19 < inCircleNodes.length; _i19++) {
+            inCircleNode = inCircleNodes[_i19];
             // TODO: workaround to force inner nodes to stay inside
             inCircleNode.displacementX /= 20.0;
             inCircleNode.displacementY /= 20.0;
@@ -2219,8 +2110,8 @@ CiSELayout.prototype.moveNodes = function () {
         var inSameDirection = void 0;
 
         // Check each node with its next node for swapping
-        for (var _i19 = 0; _i19 < size; _i19++) {
-            firstNode = ciseOnCircleNodes[_i19];
+        for (var _i20 = 0; _i20 < size; _i20++) {
+            firstNode = ciseOnCircleNodes[_i20];
             secondNode = firstNode.getOnCircleNodeExt().getNextNode();
             firstNodeExt = firstNode.getOnCircleNodeExt();
             secondNodeExt = secondNode.getOnCircleNodeExt();
@@ -2305,9 +2196,6 @@ CiSELayout.prototype.moveNodes = function () {
                 continue;
             }
 
-            console.log('Swap Happened -- Non-safe pair');
-            console.log(nonSafePair);
-
             swappedNodes.push(nonSafePair.getFirstNode());
             swappedNodes.push(nonSafePair.getSecondNode());
             swappedPairs.push(nonSafePair);
@@ -2317,8 +2205,8 @@ CiSELayout.prototype.moveNodes = function () {
         }
 
         // Now process all safe pairs
-        for (var _i20 = 0; _i20 < safePairs.length; _i20++) {
-            var safePair = safePairs[_i20];
+        for (var _i21 = 0; _i21 < safePairs.length; _i21++) {
+            var safePair = safePairs[_i21];
 
             // Check if discrepancy is above the threshold (enough to swap)
             if (safePair.inSameDirection() || safePair.getDiscrepancy() < CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP) {
@@ -2334,8 +2222,6 @@ CiSELayout.prototype.moveNodes = function () {
             // Check if they were previously swapped
             if (!this.isSwappedPreviously(safePair)) {
                 safePair.swap();
-                console.log('Swap Happened -- safe pair');
-                console.log(safePair);
                 swappedNodes.push(safePair.getFirstNode());
                 swappedNodes.push(safePair.getSecondNode());
             }
@@ -2346,15 +2232,15 @@ CiSELayout.prototype.moveNodes = function () {
 
         // Update swap history
         this.swappedPairsInLastIteration = [];
-        for (var _i21 = 0; _i21 < swappedPairs.length; _i21++) {
-            this.swappedPairsInLastIteration.push(swappedPairs[_i21]);
+        for (var _i22 = 0; _i22 < swappedPairs.length; _i22++) {
+            this.swappedPairsInLastIteration.push(swappedPairs[_i22]);
         }
 
         // Reset all discrepancy values of on circle nodes.
         var node = void 0;
 
-        for (var _i22 = 0; _i22 < size; _i22++) {
-            node = ciseOnCircleNodes[_i22];
+        for (var _i23 = 0; _i23 < size; _i23++) {
+            node = ciseOnCircleNodes[_i23];
             node.getOnCircleNodeExt().setDisplacementForSwap(0.0);
         }
     }
@@ -2408,6 +2294,240 @@ CiSELayout.prototype.checkAndReverseIfReverseIsBetter = function () {
     }
 
     return false;
+};
+
+/**
+ * This method goes over all circles and tries to find nodes that can be
+ * moved inside the circle. Inner nodes are found and moved inside one at a
+ * time. This process continues for a circle until either there is no inner
+ * node or reached max inner nodes for that circle.
+ */
+CiSELayout.prototype.findAndMoveInnerNodes = function () {
+    if (!this.allowNodesInsideCircle) {
+        return;
+    }
+
+    var graphs = this.graphManager.getGraphs();
+    for (var i = 0; i < graphs.length; i++) {
+        var ciseCircle = graphs[i];
+
+        // Count inner nodes not to exceed user defined maximum
+        var innerNodeCount = 0;
+
+        if (ciseCircle !== this.getGraphManager().getRoot()) {
+            // It is a user parameter, retrieve it.
+            var maxInnerNodes = ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle;
+
+            // Look for an inner node and move it inside
+            var innerNode = this.findInnerNode(ciseCircle);
+
+            while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes) {
+                this.moveInnerNode(innerNode);
+                innerNodeCount++;
+
+                if (innerNodeCount < maxInnerNodes) {
+                    innerNode = this.findInnerNode(ciseCircle);
+                }
+            }
+        }
+    }
+};
+
+/**
+ * This method finds an inner node (if any) in the given circle.
+ */
+CiSELayout.prototype.findInnerNode = function (ciseCircle) {
+    var innerNode = null;
+    var onCircleNodeCount = ciseCircle.getOnCircleNodes().length;
+
+    // First sort the nodes in the circle according to their degrees.
+    var sortedNodes = ciseCircle.getOnCircleNodes();
+    sortedNodes.sort(function (a, b) {
+        return a.getEdges().length - b.getEdges().length;
+    });
+
+    // Evaluate each node as possible candidate
+    for (var i = onCircleNodeCount - 1; i >= 0 && innerNode == null; i--) {
+        var candidateNode = sortedNodes[i];
+
+        // Out nodes cannot be moved inside, so just skip them
+        if (candidateNode.getOnCircleNodeExt().getInterClusterEdges().length !== 0) {
+            continue;
+        }
+
+        var circleSegment = this.findMinimalSpanningSegment(candidateNode);
+
+        // Skip nodes with no neighbors (circle segment will be empty)
+        if (circleSegment.length === 0) {
+            continue;
+        }
+
+        // For all nodes in the spanning circle segment, check if that node
+        // is connected to another node on the circle with an index diff of
+        // greater than 1 (i.e. connected to a non-immediate neighbor)
+
+        var connectedToNonImmediate = false;
+
+        for (var _i24 = 0; _i24 < circleSegment.length; _i24++) {
+            var spanningNode = circleSegment[_i24];
+
+            // Performance improvement: stop iteration if this cannot be
+            // an inner node.
+            if (connectedToNonImmediate) {
+                break;
+            }
+
+            // Look for neighbors of this spanning node.
+            var neighbors = spanningNode.getNeighborsList();
+            for (var j = 0; j < neighbors.length; j++) {
+                var neighborOfSpanningNode = neighbors[j];
+
+                // In some case we don't need to look at the neighborhood
+                // relationship. We won't care the neighbor of spanning node
+                // if:
+                // - It is the candidate node
+                // - It is on another circle
+                // - It is already an inner node.
+                if (neighborOfSpanningNode !== candidateNode && neighborOfSpanningNode.getOwner() === ciseCircle && neighborOfSpanningNode.getOnCircleNodeExt() != null && neighborOfSpanningNode.getOnCircleNodeExt() != undefined) {
+
+                    var spanningIndex = spanningNode.getOnCircleNodeExt().getIndex();
+                    var neighborOfSpanningIndex = neighborOfSpanningNode.getOnCircleNodeExt().getIndex();
+
+                    // Calculate the index difference between spanning node
+                    // and its neighbor
+                    var indexDiff = spanningIndex - neighborOfSpanningIndex;
+                    indexDiff += onCircleNodeCount; // Get rid of neg. index
+                    indexDiff %= onCircleNodeCount; // Mod it
+
+                    // Give one more chance, try reverse order of nodes
+                    // just in case.
+                    if (indexDiff > 1) {
+                        indexDiff = neighborOfSpanningIndex - spanningIndex;
+                        indexDiff += onCircleNodeCount; // Get rid of neg.
+                        indexDiff %= onCircleNodeCount; // Mod it
+                    }
+
+                    // If the diff is still greater 1, this spanning node
+                    // has a non-immediate neighbor. Sorry but you cannot
+                    // be an inner node. Poor candidate node !!!
+                    if (indexDiff > 1) {
+                        connectedToNonImmediate = true;
+                        // stop computation.
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If neighbors of candidate node is not connect to a non-immediate
+        // neighbor that this can be an inner node.
+        if (!connectedToNonImmediate) {
+            innerNode = candidateNode;
+        }
+    }
+
+    return innerNode;
+};
+
+/**
+ * This method safely removes inner node from circle perimeter (on-circle)
+ * and moves them inside their owner circles (as in-circle nodes)
+ */
+CiSELayout.prototype.moveInnerNode = function (innerNode) {
+    var ciseCircle = innerNode.getOwner();
+
+    // Remove the node from the circle first. This forces circle to
+    // re-adjust its geometry. A costly operation indeed...
+    ciseCircle.moveOnCircleNodeInside(innerNode);
+
+    // We need to also remove the inner node from on-circle nodes list
+    // of the associated graph manager
+    var onCircleNodesList = this.graphManager.getOnCircleNodes();
+    var index = onCircleNodesList.indexOf(innerNode);
+    if (index > -1) {
+        onCircleNodesList.splice(index, 1);
+    }
+
+    this.graphManager.inCircleNodes.push(innerNode);
+};
+
+/**
+ * This method returns a circular segment (ordered array of nodes),
+ * which is the smallest segment that spans neighbors of the given node.
+ */
+CiSELayout.prototype.findMinimalSpanningSegment = function (node) {
+    var segment = [];
+
+    // First create an ordered neighbors list which includes given node and
+    // its neighbors and ordered according to their indexes in this circle.
+    var orderedNeigbors = node.getOnCircleNeighbors();
+
+    if (orderedNeigbors.length === 0) {
+        return segment;
+    }
+
+    orderedNeigbors.sort(function (a, b) {
+        return a.getOnCircleNodeExt().getIndex() - b.getOnCircleNodeExt().getIndex();
+    });
+
+    // According to the order found, find the start and end nodes of the
+    // segment by testing each (order adjacent) neighbor pair.
+    var orderedNodes = node.getOwner().getOnCircleNodes();
+    orderedNodes.sort(function (a, b) {
+        return a.getOnCircleNodeExt().getIndex() - b.getOnCircleNodeExt().getIndex();
+    });
+
+    var shortestSegmentStartNode = null;
+    var shortestSegmentEndNode = null;
+    var shortestSegmentLength = orderedNodes.length;
+    var segmentLength = orderedNodes.length;
+    var neighSize = orderedNeigbors.length;
+    var i = void 0;
+    var j = void 0;
+    var tempSegmentStartNode = void 0;
+    var tempSegmentEndNode = void 0;
+    var tempSegmentLength = void 0;
+
+    for (i = 0; i < neighSize; i++) {
+        j = (i - 1 + neighSize) % neighSize;
+
+        tempSegmentStartNode = orderedNeigbors[i];
+        tempSegmentEndNode = orderedNeigbors[j];
+
+        tempSegmentLength = (tempSegmentEndNode.getOnCircleNodeExt().getIndex() - tempSegmentStartNode.getOnCircleNodeExt().getIndex() + segmentLength) % segmentLength + 1;
+
+        if (tempSegmentLength < shortestSegmentLength) {
+            shortestSegmentStartNode = tempSegmentStartNode;
+            shortestSegmentEndNode = tempSegmentEndNode;
+            shortestSegmentLength = tempSegmentLength;
+        }
+    }
+
+    // After finding start and end nodes for the segment, simply go over
+    // ordered nodes and create an ordered list of nodes in the segment
+
+    var segmentEndReached = false;
+    var currentNode = shortestSegmentStartNode;
+
+    while (!segmentEndReached) {
+        if (currentNode !== node) {
+            segment.push(currentNode);
+        }
+
+        if (currentNode === shortestSegmentEndNode) {
+            segmentEndReached = true;
+        } else {
+            var nextIndex = currentNode.getOnCircleNodeExt().getIndex() + 1;
+
+            if (nextIndex === orderedNodes.length) {
+                nextIndex = 0;
+            }
+
+            currentNode = orderedNodes[nextIndex];
+        }
+    }
+
+    return segment;
 };
 
 module.exports = CiSELayout;
@@ -2514,13 +2634,13 @@ CiSENode.prototype.getLimitedDisplacement = function (displacement) {
  * in-circle.
  */
 CiSENode.prototype.getOnCircleNeighbors = function () {
-    var neighbors = this.getNeighborsList();
+    var neighbors = Array.from(this.getNeighborsList());
     var onCircleNeighbors = [];
 
     for (var i = 0; i < neighbors.length; i++) {
         var node = neighbors[i];
 
-        if (node.getOnCircleNodeExt() !== null && node.getClusterID().equals(this.getClusterID())) onCircleNeighbors.push(node);
+        if (node.getOnCircleNodeExt() !== null && node.getClusterId() === this.getClusterId()) onCircleNeighbors.push(node);
     }
 
     return onCircleNeighbors;
@@ -2591,6 +2711,7 @@ module.exports = CiSENode;
 "use strict";
 
 
+/**
 /**
  * This class implements data and functionality required for CiSE layout per
  * on-circle node. In other words, it is an extension to CiSENode class for
@@ -3153,8 +3274,16 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+/**
+ * This class builds the required connection between CiSE elements and Cytoscape extension elements
+ *
+ *
+ * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
+ */
+
 var CiSELayout = __webpack_require__(10);
 var CiSEConstants = __webpack_require__(1);
+var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
 
 var ContinuousLayout = __webpack_require__(18);
 var defaults = ContinuousLayout.defaults;
@@ -3177,23 +3306,26 @@ var Layout = function (_ContinuousLayout) {
   function Layout(options) {
     _classCallCheck(this, Layout);
 
+    //Changing CiSEConstants if there is a particular option defined in 'options' part of Layout call
     var _this = _possibleConstructorReturn(this, (Layout.__proto__ || Object.getPrototypeOf(Layout)).call(this, assign({}, defaults, options)));
 
-    _this.defaultSettings = [CiSEConstants.DEFAULT_SPRING_STRENGTH, CiSEConstants.DEFAULT_NODE_SEPARATION, CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF, CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE, CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE];
+    if (options.nodeSeparation !== null && options.nodeSeparation !== undefined) CiSEConstants.DEFAULT_NODE_SEPARATION = options.nodeSeparation;else CiSEConstants.DEFAULT_NODE_SEPARATION = FDLayoutConstants.DEFAULT_EDGE_LENGTH / 4;
 
-    //Changing CiSEConstants if there is a particular option defined in 'options'
-    if (options.DEFAULT_SPRING_STRENGTH !== null && options.DEFAULT_SPRING_STRENGTH !== undefined) CiSEConstants.DEFAULT_SPRING_STRENGTH = options.DEFAULT_SPRING_STRENGTH;else CiSEConstants.DEFAULT_SPRING_STRENGTH = _this.defaultSettings[0];
+    if (options.idealInterClusterEdgeLengthCoefficient !== null && options.idealInterClusterEdgeLengthCoefficient !== undefined) CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.idealInterClusterEdgeLengthCoefficient;else CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = 1.4;
 
-    if (options.DEFAULT_NODE_SEPARATION !== null && options.DEFAULT_NODE_SEPARATION !== undefined) CiSEConstants.DEFAULT_NODE_SEPARATION = options.DEFAULT_NODE_SEPARATION;else CiSEConstants.DEFAULT_NODE_SEPARATION = _this.defaultSettings[1];
+    if (options.allowNodesInsideCircle !== null && options.allowNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.allowNodesInsideCircle;else CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
 
-    if (options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== null && options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== undefined) CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF;else CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = _this.defaultSettings[2];
+    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;else CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
 
-    if (options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== undefined) CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE;else CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = _this.defaultSettings[3];
+    if (options.springCoeff !== null && options.springCoeff !== undefined) CiSEConstants.DEFAULT_SPRING_STRENGTH = options.springCoeff;else CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
 
-    if (options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== undefined) CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE;else CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = _this.defaultSettings[4];
+    if (options.nodeRepulsion != null) CiSEConstants.DEFAULT_REPULSION_STRENGTH = FDLayoutConstants.DEFAULT_REPULSION_STRENGTH = options.nodeRepulsion;
 
-    // This is for letting CiSELayout to know if it is going to be animated
-    CiSEConstants.INCREMENTAL = _this.state.animateEnd;
+    if (options.gravity != null) CiSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
+
+    if (options.gravityRange != null) CiSEConstants.DEFAULT_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_GRAVITY_RANGE_FACTOR = options.gravityRange;
+
+    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;else CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
     return _this;
   }
 
@@ -3203,7 +3335,8 @@ var Layout = function (_ContinuousLayout) {
       var state = this.state;
 
       //Get the graph information from Cytoscape
-      var clusters = this.options.clusters; //TODO take cluster as a function as well?
+      var clusters = [[]];
+      if (this.options.clusters !== null && this.options.clusters !== undefined) clusters = this.options.clusters;
       var nodes = state.nodes;
       var edges = state.edges;
 
@@ -3219,13 +3352,13 @@ var Layout = function (_ContinuousLayout) {
       root.updateConnected();
       // This method calculates and returns the estimated size of this graph
       root.calcEstimatedSize();
-
       ciseLayout.calcNoOfChildrenForAllNodes();
 
       ciseLayout.doStep1();
       ciseLayout.doStep2();
 
-      // TODO Layout-base -- root.setEstimatedSize(root.getBiggerDimension());
+      root.updateBounds(true);
+      root.estimatedSize = Math.max(root.right - root.left, root.bottom - root.top);
       ciseLayout.prepareCirclesForReversal();
       ciseLayout.calcIdealEdgeLengths(false);
 
@@ -3280,6 +3413,7 @@ var Layout = function (_ContinuousLayout) {
             this.ciseLayout.step4Init();
             break;
           case 4:
+            this.ciseLayout.findAndMoveInnerNodes();
             this.ciseLayout.calcIdealEdgeLengths(true);
             this.ciseLayout.step5Init();
             break;
@@ -3295,12 +3429,10 @@ var Layout = function (_ContinuousLayout) {
       this.isStepDone = this.ciseLayout.runSpringEmbedderTick();
 
       if (this.isStepDone && this.initializerIndex < 5) {
-        console.log('# of total iterations done: ' + this.ciseLayout.iterations);
         this.timeToSwitchNextStep = true;
       }
 
       if (this.isStepDone && this.timeToSwitchNextStep === false) {
-        console.log('# of total iterations done: ' + this.ciseLayout.iterations);
         this.isDone = true;
       }
 
@@ -3342,7 +3474,7 @@ module.exports = Object.freeze({
   animate: false, // whether to show the layout as it's running; special 'end' value makes the layout animate like a discrete layout
   refresh: 10, // number of ticks per frame; higher is faster but more jerky
   maxIterations: 2500, // max iterations before the layout will bail out
-  maxSimulationTime: 4000, // max length in ms to run the layout
+  maxSimulationTime: 5000, // max length in ms to run the layout
   ungrabifyWhileSimulating: false, // so you can't drag nodes during layout
   fit: true, // on every layout reposition of nodes, fit the viewport
   padding: 30, // padding around the simulation
@@ -3696,9 +3828,7 @@ var tick = function tick(state) {
 
   s.tickIndex++;
 
-  var duration = Date.now() - s.startTime;
-
-  // || s.tickIndex >= s.maxIterations || duration >= s.maxSimulationTime
+  // || s.tickIndex >= s.maxIterations || duration >= s.maxSimulationTime -> This depends on # of nodes
   return !s.infinite && tickIndicatesDone;
 };
 

@@ -1,6 +1,13 @@
+/**
+ * This class builds the required connection between CiSE elements and Cytoscape extension elements
+ *
+ *
+ * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
+ */
 
 let CiSELayout = require('../CiSE/CiSELayout');
 let CiSEConstants = require('../CiSE/CiSEConstants');
+let FDLayoutConstants = require('avsdf-base').layoutBase.FDLayoutConstants;
 
 const ContinuousLayout = require('./continuous-base');
 const defaults = ContinuousLayout.defaults;
@@ -19,49 +26,55 @@ class Layout extends ContinuousLayout {
   constructor( options ){
     super( assign( {}, defaults, options ) );
 
-    this.defaultSettings = [ CiSEConstants.DEFAULT_SPRING_STRENGTH,
-                             CiSEConstants.DEFAULT_NODE_SEPARATION,
-                             CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF,
-                             CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE,
-                             CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE
-    ];
-
-    //Changing CiSEConstants if there is a particular option defined in 'options'
-    if(options.DEFAULT_SPRING_STRENGTH !== null && options.DEFAULT_SPRING_STRENGTH !== undefined)
-      CiSEConstants.DEFAULT_SPRING_STRENGTH = options.DEFAULT_SPRING_STRENGTH;
+    //Changing CiSEConstants if there is a particular option defined in 'options' part of Layout call
+    if(options.nodeSeparation !== null && options.nodeSeparation !== undefined)
+      CiSEConstants.DEFAULT_NODE_SEPARATION = options.nodeSeparation;
     else
-      CiSEConstants.DEFAULT_SPRING_STRENGTH = this.defaultSettings[0];
+      CiSEConstants.DEFAULT_NODE_SEPARATION = FDLayoutConstants.DEFAULT_EDGE_LENGTH / 4;
 
-    if(options.DEFAULT_NODE_SEPARATION !== null && options.DEFAULT_NODE_SEPARATION !== undefined)
-      CiSEConstants.DEFAULT_NODE_SEPARATION = options.DEFAULT_NODE_SEPARATION;
+    if(options.idealInterClusterEdgeLengthCoefficient !== null &&
+        options.idealInterClusterEdgeLengthCoefficient !== undefined)
+      CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.idealInterClusterEdgeLengthCoefficient;
     else
-      CiSEConstants.DEFAULT_NODE_SEPARATION = this.defaultSettings[1];
+      CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = 1.4;
 
-    if(options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== null &&
-      options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF !== undefined)
-      CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF;
+    if(options.allowNodesInsideCircle !== null && options.allowNodesInsideCircle !== undefined)
+      CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.allowNodesInsideCircle;
     else
-      CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = this.defaultSettings[2];
+      CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
 
-    if(options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE !== undefined)
-      CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE;
+    if(options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
+      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;
     else
-      CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = this.defaultSettings[3];
+      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
 
-    if(options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== null && options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE !== undefined)
-      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE;
+    if(options.springCoeff !== null && options.springCoeff !== undefined)
+      CiSEConstants.DEFAULT_SPRING_STRENGTH = options.springCoeff;
     else
-      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = this.defaultSettings[4];
+      CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
 
-    // This is for letting CiSELayout to know if it is going to be animated
-    CiSEConstants.INCREMENTAL = this.state.animateEnd;
+    if (options.nodeRepulsion != null)
+      CiSEConstants.DEFAULT_REPULSION_STRENGTH = FDLayoutConstants.DEFAULT_REPULSION_STRENGTH = options.nodeRepulsion;
+
+    if (options.gravity != null)
+      CiSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
+
+    if (options.gravityRange != null)
+      CiSEConstants.DEFAULT_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_GRAVITY_RANGE_FACTOR = options.gravityRange;
+
+    if(options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
+      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;
+    else
+      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
   }
 
   prerun(){
     let state = this.state;
 
     //Get the graph information from Cytoscape
-    let clusters = this.options.clusters; //TODO take cluster as a function as well?
+    let clusters = [[]];
+    if( this.options.clusters !== null && this.options.clusters !== undefined)
+      clusters = this.options.clusters;
     let nodes = state.nodes;
     let edges = state.edges;
 
@@ -77,13 +90,13 @@ class Layout extends ContinuousLayout {
     root.updateConnected();
     // This method calculates and returns the estimated size of this graph
     root.calcEstimatedSize();
-
     ciseLayout.calcNoOfChildrenForAllNodes();
 
     ciseLayout.doStep1();
     ciseLayout.doStep2();
 
-    // TODO Layout-base -- root.setEstimatedSize(root.getBiggerDimension());
+    root.updateBounds(true);
+    root.estimatedSize = Math.max(root.right - root.left, root.bottom - root.top);
     ciseLayout.prepareCirclesForReversal();
     ciseLayout.calcIdealEdgeLengths(false);
 
@@ -133,6 +146,7 @@ class Layout extends ContinuousLayout {
           this.ciseLayout.step4Init();
           break;
         case 4:
+          this.ciseLayout.findAndMoveInnerNodes();
           this.ciseLayout.calcIdealEdgeLengths(true);
           this.ciseLayout.step5Init();
           break;
@@ -148,12 +162,10 @@ class Layout extends ContinuousLayout {
     this.isStepDone = this.ciseLayout.runSpringEmbedderTick();
 
     if( this.isStepDone && this.initializerIndex < 5) {
-      console.log('# of total iterations done: ' + this.ciseLayout.iterations);
       this.timeToSwitchNextStep = true;
     }
 
     if( this.isStepDone && this.timeToSwitchNextStep === false) {
-      console.log('# of total iterations done: ' + this.ciseLayout.iterations);
       this.isDone = true;
     }
 

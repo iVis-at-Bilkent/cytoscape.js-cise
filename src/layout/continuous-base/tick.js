@@ -15,10 +15,8 @@ let tick = function( state ){
 
   s.tickIndex++;
 
-  let duration = Date.now() - s.startTime;
-
-  // || s.tickIndex >= s.maxIterations || duration >= s.maxSimulationTime
-  return !s.infinite && ( tickIndicatesDone );
+  // || s.tickIndex >= s.maxIterations || duration >= s.maxSimulationTime -> This depends on # of nodes
+  return (!s.infinite && ( tickIndicatesDone ));
 };
 
 let multitick = function( state, onNotDone = nop, onDone = nop ){
