@@ -3488,7 +3488,8 @@ module.exports = Object.freeze({
   randomize: false, // use random node positions at beginning of layout
 
   // infinite layout options
-  infinite: false // overrides all other options for a forces-all-the-time mode
+  infinite: false, // overrides all other options for a forces-all-the-time mode
+  packComponents: false
 });
 
 /***/ }),

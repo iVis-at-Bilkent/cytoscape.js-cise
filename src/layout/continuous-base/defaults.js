@@ -11,12 +11,13 @@ module.exports = Object.freeze({
   boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
 
   // layout event callbacks
-  ready: function(){}, // on layoutready
-  stop: function(){}, // on layoutstop
+  ready: function () { }, // on layoutready
+  stop: function () { }, // on layoutstop
 
   // positioning options
   randomize: false, // use random node positions at beginning of layout
-  
+
   // infinite layout options
-  infinite: false // overrides all other options for a forces-all-the-time mode
+  infinite: false, // overrides all other options for a forces-all-the-time mode
+  packComponents: false
 });
