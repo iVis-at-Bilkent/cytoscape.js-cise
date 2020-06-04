@@ -3286,19 +3286,6 @@ var CiSEConstants = __webpack_require__(1);
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
 
 var ContinuousLayout = __webpack_require__(18);
-var defaults = ContinuousLayout.defaults;
-var assign = __webpack_require__(2);
-var isFn = function isFn(fn) {
-  return typeof fn === 'function';
-};
-
-var optFn = function optFn(opt, ele) {
-  if (isFn(opt)) {
-    return opt(ele);
-  } else {
-    return opt;
-  }
-};
 
 var Layout = function (_ContinuousLayout) {
   _inherits(Layout, _ContinuousLayout);
@@ -3307,7 +3294,7 @@ var Layout = function (_ContinuousLayout) {
     _classCallCheck(this, Layout);
 
     //Changing CiSEConstants if there is a particular option defined in 'options' part of Layout call
-    var _this = _possibleConstructorReturn(this, (Layout.__proto__ || Object.getPrototypeOf(Layout)).call(this, assign({}, defaults, options)));
+    var _this = _possibleConstructorReturn(this, (Layout.__proto__ || Object.getPrototypeOf(Layout)).call(this, options));
 
     if (options.nodeSeparation !== null && options.nodeSeparation !== undefined) CiSEConstants.DEFAULT_NODE_SEPARATION = options.nodeSeparation;else CiSEConstants.DEFAULT_NODE_SEPARATION = FDLayoutConstants.DEFAULT_EDGE_LENGTH / 4;
 
@@ -3331,12 +3318,13 @@ var Layout = function (_ContinuousLayout) {
 
   _createClass(Layout, [{
     key: 'prerun',
-    value: function prerun() {
-      var state = this.state;
+    value: function prerun(state) {
 
       //Get the graph information from Cytoscape
       var clusters = [[]];
-      if (this.options.clusters !== null && this.options.clusters !== undefined) clusters = this.options.clusters;
+      if (state.clusters !== null && state.clusters !== undefined) {
+        clusters = state.clusters;
+      }
       var nodes = state.nodes;
       var edges = state.edges;
 
@@ -3382,16 +3370,15 @@ var Layout = function (_ContinuousLayout) {
 
   }, {
     key: 'tick',
-    value: function tick() {
+    value: function tick(state) {
       var _this2 = this;
 
       // Getting References
       var self = this;
-      var state = this.state;
 
       // Update Each Node Locations
       state.nodes.forEach(function (n) {
-        var s = _this2.getScratch(n);
+        var s = _this2.getScratch(n, state.name);
 
         var location = self.idToLNode[n.data('id')];
         s.x = location.getCenterX();
@@ -3504,7 +3491,8 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /**
-A generic continuous layout class
+A generic continuous layout class. This class will be inherited.
+If `packComponents` is `true`, it will run the algorithm for each connected component of the graph. Then uses cytoscape.js-layout-utilities to layout the components.
 */
 
 var assign = __webpack_require__(2);
@@ -3519,9 +3507,9 @@ var _require = __webpack_require__(20),
 var _require2 = __webpack_require__(21),
     multitick = _require2.multitick;
 
-var Layout = function () {
-  function Layout(options) {
-    _classCallCheck(this, Layout);
+var ContinuousLayout = function () {
+  function ContinuousLayout(options) {
+    _classCallCheck(this, ContinuousLayout);
 
     var o = this.options = assign({}, defaults, options);
 
@@ -3535,12 +3523,60 @@ var Layout = function () {
 
     s.animateEnd = o.animate && o.animate === 'end';
     s.animateContinuously = o.animate && !s.animateEnd;
+
+    if (o.packComponents) {
+      this.states = [];
+      var components = o.cy.$().components();
+      for (var i = 0; i < components.length; i++) {
+        var currComp = components[i];
+        var state = assign({}, o, { layout: this, nodes: currComp.nodes(), edges: currComp.edges(), tickIndex: 0, firstUpdate: true });
+        state.animateEnd = o.animate && o.animate === 'end';
+        state.animateContinuously = o.animate && !state.animateEnd;
+        state.clusters = this.getRelevantClusters4Nodes(state.clusters, state.nodes);
+        this.states.push(state);
+      }
+    }
   }
 
-  _createClass(Layout, [{
+  _createClass(ContinuousLayout, [{
+    key: 'getRelevantClusters4Nodes',
+    value: function getRelevantClusters4Nodes(clusters, nodes) {
+      var nodeDict = {};
+      for (var i = 0; i < nodes.length; i++) {
+        nodeDict[nodes[i].id()] = true;
+      }
+      var r = [];
+      if (typeof clusters == 'function') {
+        var clusterObj = {};
+        for (var _i = 0; _i < nodes.length; _i++) {
+          var nodeId = nodes[_i].id();
+          var clusterId = clusters(nodes[_i]);
+          if (!clusterObj[clusterId]) {
+            clusterObj[clusterId] = [nodeId];
+          } else {
+            clusterObj[clusterId].push(nodeId);
+          }
+        }
+        r = Object.values(clusterObj);
+      } else {
+        for (var _i2 = 0; _i2 < clusters.length; _i2++) {
+          var cluster = [];
+          for (var j = 0; j < clusters[_i2].length; j++) {
+            var currElem = clusters[_i2][j];
+            if (nodeDict[currElem]) {
+              cluster.push(currElem);
+            }
+          }
+          if (cluster.length > 0) {
+            r.push(cluster);
+          }
+        }
+      }
+      return r;
+    }
+  }, {
     key: 'getScratch',
-    value: function getScratch(el) {
-      var name = this.state.name;
+    value: function getScratch(el, name) {
       var scratch = el.scratch(name);
 
       if (!scratch) {
@@ -3548,14 +3584,15 @@ var Layout = function () {
 
         el.scratch(name, scratch);
       }
-
       return scratch;
     }
+
+    // s is a state
+
   }, {
-    key: 'run',
-    value: function run() {
+    key: 'run4state',
+    value: function run4state(s) {
       var l = this;
-      var s = this.state;
 
       s.tickIndex = 0;
       s.firstUpdate = true;
@@ -3571,11 +3608,11 @@ var Layout = function () {
         l.one('stop', s.stop);
       }
 
-      s.nodes.forEach(function (n) {
-        return setInitialPositionState(n, s);
-      });
+      for (var i = 0; i < s.nodes.length; i++) {
+        setInitialPositionState(s.nodes[i], s);
+      }
 
-      l.prerun(s);
+      this.prerun(s);
 
       if (s.animateContinuously) {
         var ungrabify = function ungrabify(node) {
@@ -3685,32 +3722,33 @@ var Layout = function () {
         while (!done) {
           multitick(s, _onNotDone, _onDone2);
         }
-
-        s.eles.layoutPositions(this, s, function (node) {
-          var pd = getNodePositionData(node, s);
-
-          return { x: pd.x, y: pd.y };
-        });
+        // if there is no packing
+        if (!this.states) {
+          s.nodes.layoutPositions(this, s, function (node) {
+            var pd = getNodePositionData(node, s);
+            return { x: pd.x, y: pd.y };
+          });
+        }
       }
-
       l.postrun(s);
-
       return this; // chaining
     }
   }, {
-    key: 'prerun',
-    value: function prerun() {}
-  }, {
-    key: 'postrun',
-    value: function postrun() {}
-  }, {
-    key: 'tick',
-    value: function tick() {}
+    key: 'run',
+    value: function run() {
+      if (this.states) {
+        for (var i = 0; i < this.states.length; i++) {
+          this.run4state(this.states[i]);
+        }
+        this.setShifts4PackingComponents(this.states);
+      } else {
+        this.run4state(this.state);
+      }
+    }
   }, {
     key: 'stop',
     value: function stop() {
       this.state.running = false;
-
       return this; // chaining
     }
   }, {
@@ -3718,12 +3756,58 @@ var Layout = function () {
     value: function destroy() {
       return this; // chaining
     }
+
+    // use this.state and shift clusters based
+
+  }, {
+    key: 'setShifts4PackingComponents',
+    value: function setShifts4PackingComponents(states) {
+      var cy = this.options.cy;
+      if (!cy.layoutUtilities || !this.options.packComponents) {
+        return null;
+      }
+
+      var components = [];
+      for (var i = 0; i < states.length; i++) {
+        var nodes = [];
+        for (var j = 0; j < states[i].nodes.length; j++) {
+          var currNode = states[i].nodes[j];
+          var pd = getNodePositionData(currNode, states[i]);
+          var bb = currNode.boundingBox();
+          nodes.push({ x: pd.x, y: pd.y, width: bb.w, height: bb.h });
+        }
+        var edges = [];
+        for (var _j = 0; _j < states[i].edges.length; _j++) {
+          var currEdge = states[i].edges[_j];
+          var sourceEndpoint = currEdge.sourceEndpoint();
+          var targetEndpoint = currEdge.targetEndpoint();
+          edges.push({ startX: sourceEndpoint.x, startY: sourceEndpoint.y, endX: targetEndpoint.x, endY: targetEndpoint.y });
+        }
+        components.push({ nodes: nodes, edges: edges });
+      }
+
+      var layUtil = cy.layoutUtilities({ desiredAspectRatio: cy.width() / cy.height() });
+      var shifts = layUtil.packComponents(components).shifts;
+      var node2shift = {};
+      for (var _i3 = 0; _i3 < states.length; _i3++) {
+        for (var _j2 = 0; _j2 < states[_i3].nodes.length; _j2++) {
+          node2shift[states[_i3].nodes[_j2].id()] = { x: shifts[_i3].dx, y: shifts[_i3].dy };
+        }
+      }
+      // `layoutPositions` should be called only once and it should be called with all the elements
+      // 'cuz will fit to calling element set
+      states[0].eles.layoutPositions(this, states[0], function (node) {
+        var pd = getNodePositionData(node, states[0]);
+        var id = node.id();
+        return { x: pd.x + node2shift[id].x, y: pd.y + node2shift[id].y };
+      });
+    }
   }]);
 
-  return Layout;
+  return ContinuousLayout;
 }();
 
-module.exports = Layout;
+module.exports = ContinuousLayout;
 
 /***/ }),
 /* 19 */

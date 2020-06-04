@@ -10,45 +10,34 @@ let CiSEConstants = require('../CiSE/CiSEConstants');
 let FDLayoutConstants = require('avsdf-base').layoutBase.FDLayoutConstants;
 
 const ContinuousLayout = require('./continuous-base');
-const defaults = ContinuousLayout.defaults;
-const assign = require('../assign');
-const isFn = fn => typeof fn === 'function';
-
-const optFn = ( opt, ele ) => {
-  if( isFn( opt ) ){
-    return opt( ele );
-  } else {
-    return opt;
-  }
-};
 
 class Layout extends ContinuousLayout {
-  constructor( options ){
-    super( assign( {}, defaults, options ) );
+  constructor(options) {
+    super(options);
 
     //Changing CiSEConstants if there is a particular option defined in 'options' part of Layout call
-    if(options.nodeSeparation !== null && options.nodeSeparation !== undefined)
+    if (options.nodeSeparation !== null && options.nodeSeparation !== undefined)
       CiSEConstants.DEFAULT_NODE_SEPARATION = options.nodeSeparation;
     else
       CiSEConstants.DEFAULT_NODE_SEPARATION = FDLayoutConstants.DEFAULT_EDGE_LENGTH / 4;
 
-    if(options.idealInterClusterEdgeLengthCoefficient !== null &&
-        options.idealInterClusterEdgeLengthCoefficient !== undefined)
+    if (options.idealInterClusterEdgeLengthCoefficient !== null &&
+      options.idealInterClusterEdgeLengthCoefficient !== undefined)
       CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.idealInterClusterEdgeLengthCoefficient;
     else
       CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = 1.4;
 
-    if(options.allowNodesInsideCircle !== null && options.allowNodesInsideCircle !== undefined)
+    if (options.allowNodesInsideCircle !== null && options.allowNodesInsideCircle !== undefined)
       CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.allowNodesInsideCircle;
     else
       CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
 
-    if(options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
+    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
       CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;
     else
       CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
 
-    if(options.springCoeff !== null && options.springCoeff !== undefined)
+    if (options.springCoeff !== null && options.springCoeff !== undefined)
       CiSEConstants.DEFAULT_SPRING_STRENGTH = options.springCoeff;
     else
       CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
@@ -62,19 +51,19 @@ class Layout extends ContinuousLayout {
     if (options.gravityRange != null)
       CiSEConstants.DEFAULT_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_GRAVITY_RANGE_FACTOR = options.gravityRange;
 
-    if(options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
+    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
       CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;
     else
       CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
   }
 
-  prerun(){
-    let state = this.state;
+  prerun(state) {
 
     //Get the graph information from Cytoscape
     let clusters = [[]];
-    if( this.options.clusters !== null && this.options.clusters !== undefined)
-      clusters = this.options.clusters;
+    if (state.clusters !== null && state.clusters !== undefined) {
+      clusters = state.clusters;
+    }
     let nodes = state.nodes;
     let edges = state.edges;
 
@@ -84,7 +73,7 @@ class Layout extends ContinuousLayout {
     let root = this.root = graphManager.addRoot();
 
     // Construct the GraphManager according to the graph from Cytoscape
-    this.idToLNode = ciseLayout.convertToClusteredGraph(nodes,edges,clusters);
+    this.idToLNode = ciseLayout.convertToClusteredGraph(nodes, edges, clusters);
 
     //This method updates whether this graph is connected or not
     root.updateConnected();
@@ -117,22 +106,21 @@ class Layout extends ContinuousLayout {
   }
 
   // run this each iteraction
-  tick(){
+  tick(state) {
     // Getting References
     let self = this;
-    let state = this.state;
 
     // Update Each Node Locations
-    state.nodes.forEach( n => {
-      let s = this.getScratch(n);
+    state.nodes.forEach(n => {
+      let s = this.getScratch(n, state.name);
 
       let location = self.idToLNode[n.data('id')];
       s.x = location.getCenterX();
       s.y = location.getCenterY();
     });
 
-    if(this.timeToSwitchNextStep){
-      switch ( this.initializerIndex ) {
+    if (this.timeToSwitchNextStep) {
+      switch (this.initializerIndex) {
         case 0:
           this.ciseLayout.step5Init();
           break;
@@ -161,11 +149,11 @@ class Layout extends ContinuousLayout {
     // Run one spring iteration
     this.isStepDone = this.ciseLayout.runSpringEmbedderTick();
 
-    if( this.isStepDone && this.initializerIndex < 5) {
+    if (this.isStepDone && this.initializerIndex < 5) {
       this.timeToSwitchNextStep = true;
     }
 
-    if( this.isStepDone && this.timeToSwitchNextStep === false) {
+    if (this.isStepDone && this.timeToSwitchNextStep === false) {
       this.isDone = true;
     }
 
@@ -173,12 +161,12 @@ class Layout extends ContinuousLayout {
   }
 
   // run this function after the layout is done ticking
-  postrun(){
+  postrun() {
 
   }
 
   // clean up any object refs that could prevent garbage collection, etc.
-  destroy(){
+  destroy() {
     super.destroy();
 
     return this;
