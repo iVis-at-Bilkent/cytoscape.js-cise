@@ -461,6 +461,13 @@
         name: 'concentric',
         clusters: arrayOfClusterArrays
       },
+      ready: function () {
+        // initialize layout-utilities extension
+        this.layoutUtilities({
+          desiredAspectRatio: this.width() / this.height(),
+          componentSpacing: 30
+        });
+      },
       style: [
         {
           selector: 'node',

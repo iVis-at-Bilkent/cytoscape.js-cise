@@ -21,6 +21,7 @@ A detailed illustration of CiSE can also be found [here.](https://www.youtube.co
  * Cytoscape.js: ^3.2.0
  * avsdf-base: ^1.0.0
  * cose-base: ^1.0.0
+ * cytoscape-layout-utilities: ^1.0.0 (only needed if `packComponents` is true)
 
 ## Usage instructions
 
@@ -134,6 +135,9 @@ var default = {
     
     // Gravity range (constant)
     gravityRange: 3.8, 
+
+    // whether to pack components of the graph, if set to true, you should import cytoscape.js-layout-utilities
+    packComponents: false
 
     // Layout event callbacks; equivalent to `layout.one('layoutready', callback)` for example
     ready: function(){}, // on layoutready

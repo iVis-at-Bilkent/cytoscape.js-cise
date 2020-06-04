@@ -3786,7 +3786,10 @@ var ContinuousLayout = function () {
         components.push({ nodes: nodes, edges: edges });
       }
 
-      var layUtil = cy.layoutUtilities({ desiredAspectRatio: cy.width() / cy.height() });
+      var layUtil = cy.layoutUtilities('get');
+      if (!layUtil) {
+        layUtil = cy.layoutUtilities({ desiredAspectRatio: cy.width() / cy.height() });
+      }
       var shifts = layUtil.packComponents(components).shifts;
       var node2shift = {};
       for (var _i3 = 0; _i3 < states.length; _i3++) {
