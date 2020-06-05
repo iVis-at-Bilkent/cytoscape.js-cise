@@ -2316,7 +2316,7 @@ CiSELayout.prototype.findAndMoveInnerNodes = function () {
 
         if (ciseCircle !== this.getGraphManager().getRoot()) {
             // It is a user parameter, retrieve it.
-            var maxInnerNodes = ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle;
+            var maxInnerNodes = Math.floor(ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle);
 
             // Look for an inner node and move it inside
             var innerNode = this.findInnerNode(ciseCircle);
