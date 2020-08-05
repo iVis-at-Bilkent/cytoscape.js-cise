@@ -15,7 +15,7 @@ module.exports = Object.freeze({
   stop: function () { }, // on layoutstop
 
   // positioning options
-  randomize: false, // use random node positions at beginning of layout
+  randomize: true, // use random node positions at beginning of layout
 
   // infinite layout options
   infinite: false, // overrides all other options for a forces-all-the-time mode

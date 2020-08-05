@@ -87,6 +87,11 @@ var default = {
     clusters: clusterInfo,
     
     // -------- Optional parameters --------
+    
+    // Use random node positions at beginning of layout
+    // if this is set to false, the layout will be incremental
+    randomize: true, 
+
     // Whether to animate the layout
     // - true : Animate while the layout is running
     // - false : Just show the end result
