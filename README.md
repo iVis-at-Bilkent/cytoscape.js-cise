@@ -6,7 +6,7 @@ cytoscape.js-cise
 
 CiSE(Circular Spring Embedder) is an algorithm based on the traditional force-directed layout scheme with extensions to move and rotate nodes in the same cluster as a group. Further local improvements may be obtained by flipping clusters and by swapping neighboring node pairs in the same cluster, reducing the edge crossing number.
 
-The algorithm is implemented as a Cytoscape.js extension by [i-Vis Lab](http://cs.bilkent.edu.tr/~ivis/) in Bilkent University ([demo](https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-cise/develop/demo.html))
+The algorithm is implemented as a Cytoscape.js extension by [i-Vis Lab](http://cs.bilkent.edu.tr/~ivis/) in Bilkent University ([demo](https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-cise/develop/demo/demo.html))
 
 Please cite the following when using this layout:
 
@@ -21,6 +21,8 @@ A detailed illustration of CiSE can also be found [here.](https://www.youtube.co
  * Cytoscape.js: ^3.2.0
  * avsdf-base: ^1.0.0
  * cose-base: ^1.0.0
+ 
+## Optional Dependencies
  * cytoscape-layout-utilities: ^1.0.0 (only needed if `packComponents` is true)
 
 ## Usage instructions
@@ -80,11 +82,12 @@ var default = {
     // corresponding to that node. Returning negative numbers, null or undefined is fine for unclustered
     // nodes.  
     // e.g
-    // Array:                                     OR          function(node){
-    //  [ ['n1','n2','n3'],                                       ...
-    //    ['n5','n6']                                         }
-    //    ['n7', 'n8', 'n9', 'n10'] ]                         
-    clusters: clusterInfo,
+    // Array:                                     OR          function(node){ ...
+    //  [ ['n1','n2','n3'],                                     return "1";    // or any cluster ID assosiated with node
+    //    ['n5','n6']                                           return node.data("clusterID"); // If the cluster IDs are stored in Data element of nodes
+    //    ['n7', 'n8', 'n9', 'n10'] ]                         ... }
+    clusters: clusterInfo,                                    
+                                                              
     
     // -------- Optional parameters --------
     
