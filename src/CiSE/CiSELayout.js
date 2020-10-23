@@ -378,7 +378,7 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
 /**
  * This method runs AVSDF layout for each cluster.
  */
-CiSELayout.prototype.doStep1 = function(){
+CiSELayout.prototype.doStep1 = function(isIncremental){
     this.step = CiSELayout.STEP_1;
     this.phase = CiSELayout.PHASE_OTHER;
 
@@ -396,7 +396,8 @@ CiSELayout.prototype.doStep1 = function(){
             let avsdfLayout = new AVSDFLayout();
             let avsdfCircle = avsdfLayout.graphManager.addRoot();
             let clusteredNodes = graph.getOnCircleNodes();
-
+            let center_X = 0;
+            let center_Y = 0;
             // Create corresponding AVSDF nodes in current cluster
             for (let i = 0; i < clusteredNodes.length; i++) {
                 let ciseOnCircleNode = clusteredNodes[i];
@@ -407,10 +408,13 @@ CiSELayout.prototype.doStep1 = function(){
                 avsdfNode.setWidth(ciseOnCircleNode.getWidth());
                 avsdfNode.setHeight(ciseOnCircleNode.getHeight());
                 avsdfCircle.add(avsdfNode);
-
+                center_X += loc.x;
+                center_Y += loc.y;
                 ciseToAvsdf.put(ciseOnCircleNode, avsdfNode);
             }
 
+            center_X = center_X / clusteredNodes.length;
+            center_Y = center_Y / clusteredNodes.length;
             // For each edge, create a corresponding AVSDF edge if its both ends
             // are in this cluster.
             let allEdges = this.getAllEdges();
@@ -427,8 +431,17 @@ CiSELayout.prototype.doStep1 = function(){
             }
 
             // Run AVSDF layout
+            if(isIncremental){
+                avsdfLayout.incremental = true;
+            }
+            
             avsdfLayout.layout();
 
+            if(isIncremental){
+                avsdfCircle.centerX = center_X;
+                avsdfCircle.centerY = center_Y;
+            }
+            
             // Do post-processing
             let sortedByDegreeList = avsdfLayout.initPostProcess();
             for(let i = 0; i < sortedByDegreeList.length; i++){

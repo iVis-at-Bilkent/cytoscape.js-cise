@@ -81,8 +81,10 @@ class Layout extends ContinuousLayout {
     root.calcEstimatedSize();
     ciseLayout.calcNoOfChildrenForAllNodes();
 
-    ciseLayout.doStep1();
-    ciseLayout.doStep2();
+    ciseLayout.doStep1(!this.options.randomize);
+    if(this.options.randomize){
+      ciseLayout.doStep2();
+    }
 
     root.updateBounds(true);
     root.estimatedSize = Math.max(root.right - root.left, root.bottom - root.top);
@@ -125,7 +127,8 @@ class Layout extends ContinuousLayout {
           this.ciseLayout.step5Init();
           break;
         case 1:
-          this.ciseLayout.step3Init();
+          if(this.options.randomize)
+            this.ciseLayout.step3Init();
           break;
         case 2:
           this.ciseLayout.step5Init();
