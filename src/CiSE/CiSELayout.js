@@ -31,7 +31,6 @@ const DimensionD = require('avsdf-base').layoutBase.DimensionD;
 let AVSDFConstants = require('avsdf-base').AVSDFConstants;
 const AVSDFLayout = require('avsdf-base').AVSDFLayout;
 const CoSELayout = require('cose-base').CoSELayout;
-const CoSEConstants = require('cose-base').CoSEConstants;
 const CiSEConstants = require('./CiSEConstants');
 const CiSEGraphManager = require('./CiSEGraphManager');
 const CiSECircle = require('./CiSECircle');
@@ -500,10 +499,6 @@ CiSELayout.prototype.doStep2 = function(){
 
     // Create a CoSE layout object
     let coseLayout = new CoSELayout();
-    coseLayout.isSubLayout = false;
-    coseLayout.useMultiLevelScaling = false;
-    coseLayout.useFRGridVariant = true;
-    coseLayout.springConstant *= 1.5;
 
     let gm = coseLayout.newGraphManager();
     let coseRoot = gm.addRoot();
@@ -614,7 +609,6 @@ CiSELayout.prototype.doStep2 = function(){
         let parentLoc = ciseNode.getOwner().getParent().getLocation();
         ciseNode.setLocation(loc.x + parentLoc.x, loc.y + parentLoc.y);
     }
-
 };
 
 /**
@@ -940,7 +934,6 @@ CiSELayout.prototype.moveNodes = function(){
         // Also move all in-circle nodes. Note that in-circle nodes will be
         // empty if this option is not set, hence no negative effect on
         // performance
-
         let inCircleNodes = this.graphManager.getInCircleNodes();
         let inCircleNode;
 
@@ -1016,7 +1009,6 @@ CiSELayout.prototype.moveNodes = function(){
             else
                 nonSafePairs.push(pair);
         }
-
             let nonSafePair;
             let lookForSwap = true;
             let rollback;

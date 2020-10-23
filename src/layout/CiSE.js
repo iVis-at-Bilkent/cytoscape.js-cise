@@ -63,7 +63,10 @@ class Layout extends ContinuousLayout {
     let clusters = [[]];
     if (state.clusters !== null && state.clusters !== undefined) {
       clusters = state.clusters;
+    } else{
+      throw "ERROR: Cluster information is invalid/undefined/null. Please create the 'clusters' variable as defined in the documentation";
     }
+
     let nodes = state.nodes;
     let edges = state.edges;
 

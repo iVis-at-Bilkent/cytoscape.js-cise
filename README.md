@@ -12,7 +12,7 @@ Please cite the following when using this layout:
 
 M. Belviranli, A. Dilek and U. Dogrusoz, "[CiSE: A Circular Spring Embedder Layout Algorithm](https://dlnext.acm.org/doi/abs/10.1109/TVCG.2012.178)" in IEEE Transactions on Visualization & Computer Graphics, vol. 19, no. 06, pp. 953-966, 2013.
 
-<p align="center"><img src="demo.gif" width="526" height="411"></p>
+<p align="center"><img src="demo/demo.gif" width="526" height="411"></p>
 
 A detailed illustration of CiSE can also be found [here.](https://www.youtube.com/watch?v=SMDAQajK-E8)
 

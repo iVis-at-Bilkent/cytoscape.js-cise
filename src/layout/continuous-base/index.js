@@ -25,6 +25,10 @@ class ContinuousLayout {
     s.animateContinuously = o.animate && !s.animateEnd;
 
     if (o.packComponents) {
+      if (this.state.clusters == null || this.state.clusters == undefined) {
+        throw "ERROR: Cluster information is invalid/undefined/null. Please create the 'clusters' variable as defined in the documentation";
+      }
+
       this.states = [];
       const components = o.cy.$().components();
       for (let i = 0; i < components.length; i++) {
