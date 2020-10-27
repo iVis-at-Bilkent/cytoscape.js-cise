@@ -28,6 +28,9 @@ class ContinuousLayout {
       if (this.state.clusters == null || this.state.clusters == undefined) {
         throw "ERROR: Cluster information is invalid/undefined/null. Please create the 'clusters' variable as defined in the documentation";
       }
+      if (this.state.nodes == null && this.state.nodes == undefined || this.state.nodes.length == 0) {
+        throw "ERROR: Node information is invalid/undefined/null or simply empty. Please make sure nodes are passed properly. Can't layout an empty graph";
+      }
 
       this.states = [];
       const components = o.cy.$().components();

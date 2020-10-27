@@ -61,13 +61,20 @@ class Layout extends ContinuousLayout {
 
     //Get the graph information from Cytoscape
     let clusters = [[]];
+    // Throw error if cluster info is invalid
     if (state.clusters !== null && state.clusters !== undefined) {
       clusters = state.clusters;
     } else{
       throw "ERROR: Cluster information is invalid/undefined/null. Please create the 'clusters' variable as defined in the documentation";
     }
 
-    let nodes = state.nodes;
+    // Throw info if node info is invalid
+    let nodes;
+    if (state.nodes !== null && state.nodes !== undefined || state.nodes.length > 0) {
+      nodes = state.nodes;
+    } else{
+      throw "ERROR: Node information is invalid/undefined/null or simply empty. Please make sure nodes are passed properly. Can't layout an empty graph";
+    }
     let edges = state.edges;
 
     //Initialize CiSE elements

@@ -3322,13 +3322,20 @@ var Layout = function (_ContinuousLayout) {
 
       //Get the graph information from Cytoscape
       var clusters = [[]];
+      // Throw error if cluster info is invalid
       if (state.clusters !== null && state.clusters !== undefined) {
         clusters = state.clusters;
       } else {
         throw "ERROR: Cluster information is invalid/undefined/null. Please create the 'clusters' variable as defined in the documentation";
       }
 
-      var nodes = state.nodes;
+      // Throw info if node info is invalid
+      var nodes = void 0;
+      if (state.nodes !== null && state.nodes !== undefined || state.nodes.length > 0) {
+        nodes = state.nodes;
+      } else {
+        throw "ERROR: Node information is invalid/undefined/null or simply empty. Please make sure nodes are passed properly. Can't layout an empty graph";
+      }
       var edges = state.edges;
 
       //Initialize CiSE elements
@@ -3532,6 +3539,9 @@ var ContinuousLayout = function () {
     if (o.packComponents) {
       if (this.state.clusters == null || this.state.clusters == undefined) {
         throw "ERROR: Cluster information is invalid/undefined/null. Please create the 'clusters' variable as defined in the documentation";
+      }
+      if (this.state.nodes == null && this.state.nodes == undefined || this.state.nodes.length == 0) {
+        throw "ERROR: Node information is invalid/undefined/null or simply empty. Please make sure nodes are passed properly. Can't layout an empty graph";
       }
 
       this.states = [];
