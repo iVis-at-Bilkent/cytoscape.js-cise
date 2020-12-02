@@ -33,7 +33,8 @@ class ContinuousLayout {
       }
 
       this.states = [];
-      const components = o.cy.$().components();
+      let components = o.cy.$().components();
+      components = this.mergeComponentsIfNeeded(components, this.state.clusters);
       for (let i = 0; i < components.length; i++) {
         const currComp = components[i];
         let state = assign({}, o, { layout: this, nodes: currComp.nodes(), edges: currComp.edges(), tickIndex: 0, firstUpdate: true });
@@ -43,6 +44,75 @@ class ContinuousLayout {
         this.states.push(state);
       }
     }
+  }
+
+  /** If a cluster spans multiple components, merge them
+   * @param  {} components is an array of cytoscape.js collections
+   * @param  {} clusters array of array of element ids or a function which takes cytoscape.js as param and return the cluster id of the element
+   */
+  mergeComponentsIfNeeded(components, clusters) {
+    let cluster2comp = {};
+
+    if (typeof clusters == 'function') {
+      const comp2cluster = {};
+      for (let i = 0; i < components.length; i++) {
+        comp2cluster[i] = {};
+        for (let j = 0; j < components[i].length; j++) {
+          const clusterId = clusters(components[i][j]);
+          comp2cluster[i][clusterId] = true;
+        }
+      }
+      for (let comp in comp2cluster) {
+        for (let cluster in comp2cluster[comp]) {
+          if (cluster2comp[cluster]) {
+            cluster2comp[cluster][comp] = true;
+          } else {
+            const obj = {};
+            obj[comp] = true;
+            cluster2comp[cluster] = obj;
+          }
+        }
+      }
+    } else {
+      for (let i = 0; i < clusters.length; i++) {
+        for (let j = 0; j < clusters[i].length; j++) {
+          const compIdx = components.findIndex(x => x.$id(clusters[i][j]).length > 0);
+          if (cluster2comp[i]) {
+            cluster2comp[i][compIdx] = true;
+          } else {
+            const obj = {};
+            obj[compIdx] = true;
+            cluster2comp[i] = obj;
+          }
+        }
+      }
+    }
+
+    const newComps = []
+    const clusteredComponents = {};
+    for (let k in cluster2comp) {
+      const comps = Object.keys(cluster2comp[k]);
+      if (comps.length < 2) {
+        continue;
+      }
+      let mergedComp = this.options.cy.collection();
+      for (let i = 0; i < comps.length; i++) {
+        if (!clusteredComponents[comps[i]]) {
+          mergedComp = mergedComp.union(components[comps[i]]);
+          clusteredComponents[comps[i]] = true;
+        }
+      }
+      if (mergedComp.length > 0) {
+        newComps.push(mergedComp);
+      }
+    }
+
+    for (let i = 0; i < components.length; i++) {
+      if (!clusteredComponents[i]) {
+        newComps.push(components[i]);
+      }
+    }
+    return newComps;
   }
 
   getRelevantClusters4Nodes(clusters, nodes) {
