@@ -39,6 +39,12 @@ function CiSECircle(parent, graphMgr, vNode) {
     // Holds the nodes which are inside the circle
     this.inCircleNodes = [];
 
+    // The additional node seperation value is used to store the value of extra space 
+    // induced by adding more inner nodes than the circle can fit in. Although the circle
+    // is enlarged by increasing the radius, the positions of the on-circle nodes
+    // have to be recalculated with respect to the proportion of increase in circumference.
+    this.additionalNodeSeparation = null;
+
     // The radius of this circle, calculated with respect to the dimensions of
     // the nodes on this circle and node separation options
     this.radius = 0;
@@ -77,6 +83,20 @@ CiSECircle.prototype.setRadius = function(radius) {
 // This method sets the radius of this circle.
 CiSECircle.prototype.getRadius = function() {
     return this.radius;
+};
+
+// This method sets the additional node seperation value.
+CiSECircle.prototype.setAdditionalNodeSeparation = function(additionalNodeSeparation) {
+    this.additionalNodeSeparation = additionalNodeSeparation;
+};
+
+// This method returns the additional node seperation value.
+CiSECircle.prototype.getAdditionalNodeSeparation = function() {
+    if(this.additionalNodeSeparation === null) //If this is called the first time
+    {
+        this.setAdditionalNodeSeparation(0.0);
+    }
+    return this.additionalNodeSeparation;
 };
 
 // This method returns nodes that don't have neighbors outside this circle.
@@ -390,7 +410,7 @@ CiSECircle.prototype.swapNodes = function(first, second){
     let smallIndexPrevNode = smallIndexNodeExt.getPrevNode();
 
     let layout = this.getGraphManager().getLayout();
-    let nodeSeparation = layout.getNodeSeparation();
+    let nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
 
     let angle = (smallIndexPrevNode.getOnCircleNodeExt().getAngle() +
                 (smallIndexPrevNode.getHalfTheDiagonal() +
@@ -663,7 +683,7 @@ CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
  */
 CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
     let layout = this.getGraphManager().getLayout();
-    let nodeSeparation = layout.getNodeSeparation();
+    let nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
 
     // It is important that we sort these on-circle nodes in place.
     let inOrderCopy = this.onCircleNodes;
