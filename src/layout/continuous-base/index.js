@@ -8,6 +8,7 @@ const defaults = require('./defaults');
 const makeBoundingBox = require('./make-bb');
 const { setInitialPositionState, refreshPositions, getNodePositionData } = require('./position');
 const { multitick } = require('./tick');
+const { DisjointSets } = require('./DisjointSets');
 
 class ContinuousLayout {
   constructor(options) {
@@ -33,8 +34,7 @@ class ContinuousLayout {
       }
 
       this.states = [];
-      let components = o.cy.$().components();
-      components = this.mergeComponentsIfNeeded(components, this.state.clusters);
+      let components = this.getDisjointSets(o.cy.$(), this.state.clusters);
       for (let i = 0; i < components.length; i++) {
         const currComp = components[i];
         let state = assign({}, o, { layout: this, nodes: currComp.nodes(), edges: currComp.edges(), tickIndex: 0, firstUpdate: true });
@@ -46,73 +46,46 @@ class ContinuousLayout {
     }
   }
 
-  /** If a cluster spans multiple components, merge them
-   * @param  {} components is an array of cytoscape.js collections
+  /** clusters and components must be united
+   * @param  {} eles cytoscape.js collection for all the elements
    * @param  {} clusters array of array of element ids or a function which takes cytoscape.js as param and return the cluster id of the element
    */
-  mergeComponentsIfNeeded(components, clusters) {
-    let cluster2comp = {};
+  getDisjointSets(eles, clusters) {
+    const id2idx = {};
+    const nodes = eles.nodes();
+    const edges = eles.edges();
+    for (let i = 0; i < nodes.length; i++) {
+      id2idx[nodes[i].id()] = i;
+    }
 
-    if (typeof clusters == 'function') {
-      const comp2cluster = {};
-      for (let i = 0; i < components.length; i++) {
-        comp2cluster[i] = {};
-        for (let j = 0; j < components[i].length; j++) {
-          const clusterId = clusters(components[i][j]);
-          comp2cluster[i][clusterId] = true;
-        }
-      }
-      for (let comp in comp2cluster) {
-        for (let cluster in comp2cluster[comp]) {
-          if (cluster2comp[cluster]) {
-            cluster2comp[cluster][comp] = true;
-          } else {
-            const obj = {};
-            obj[comp] = true;
-            cluster2comp[cluster] = obj;
-          }
-        }
-      }
-    } else {
-      for (let i = 0; i < clusters.length; i++) {
-        for (let j = 0; j < clusters[i].length; j++) {
-          const compIdx = components.findIndex(x => x.$id(clusters[i][j]).length > 0);
-          if (cluster2comp[i]) {
-            cluster2comp[i][compIdx] = true;
-          } else {
-            const obj = {};
-            obj[compIdx] = true;
-            cluster2comp[i] = obj;
-          }
-        }
+    // use union find data structure to find connected components in cy
+    const disjointSets = new DisjointSets(nodes.length);
+    for (let i = 0; i < edges.length; i++) {
+      const x = id2idx[edges[i].source().id()];
+      const y = id2idx[edges[i].target().id()];
+      disjointSets.unite(x, y);
+    }
+
+    // unite the clusters
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = 0; j < clusters[i].length - 1; j++) {
+        const x = id2idx[clusters[i][j]];
+        const y = id2idx[clusters[i][j + 1]];
+        disjointSets.unite(x, y);
       }
     }
 
-    const newComps = []
-    const clusteredComponents = {};
-    for (let k in cluster2comp) {
-      const comps = Object.keys(cluster2comp[k]);
-      if (comps.length < 2) {
-        continue;
-      }
-      let mergedComp = this.options.cy.collection();
-      for (let i = 0; i < comps.length; i++) {
-        if (!clusteredComponents[comps[i]]) {
-          mergedComp = mergedComp.union(components[comps[i]]);
-          clusteredComponents[comps[i]] = true;
-        }
-      }
-      if (mergedComp.length > 0) {
-        newComps.push(mergedComp);
+    const unions = {};
+    for (let i = 0; i < nodes.length; i++) {
+      const un = disjointSets.findSet(id2idx[nodes[i].id()]);
+      const nodeAndEdges = nodes[i].connectedEdges().union(nodes[i]);
+      if (unions[un]) {
+        unions[un] = unions[un].union(nodeAndEdges);
+      } else {
+        unions[un] = nodeAndEdges;
       }
     }
-
-    for (let i = 0; i < components.length; i++) {
-      if (!clusteredComponents[i]) {
-        newComps.push(components[i]);
-      }
-    }
-    return newComps;
+    return Object.values(unions);
   }
 
   getRelevantClusters4Nodes(clusters, nodes) {
@@ -358,4 +331,3 @@ class ContinuousLayout {
 }
 
 module.exports = ContinuousLayout;
-
