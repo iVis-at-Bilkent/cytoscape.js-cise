@@ -133,10 +133,10 @@ var default = {
     
     // - Lower values give looser springs
     // - Higher values give tighter springs
-    springCoeff: 0.45,
+    springCoeff: edge => 0.45,
     
     // Node repulsion (non overlapping) multiplier
-    nodeRepulsion: 4500,
+    nodeRepulsion: node => 4500,
     
     // Gravity force (constant)
     gravity: 0.25,

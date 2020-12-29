@@ -192,7 +192,7 @@ CiSELayout.prototype.getNodeSeparation = function()
  * -> For unclustered nodes, their clusterID is -1.
  * -> CiSENode that corresponds to a cluster has no ID property.
  */
-CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
+CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters, options){
 
     let self = this;
     let idToLNode = {};
@@ -259,6 +259,7 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
                 new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h)));
             ciseNode.setId(nodeID);
             ciseNode.setClusterId(i);
+            ciseNode.nodeRepulsion = typeof options.nodeRepulsion === 'function' ? options.nodeRepulsion(cytoNode) : options.nodeRepulsion;
             circle.getOnCircleNodes().push(ciseNode);
             circle.add(ciseNode);
 
@@ -289,6 +290,7 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
                 new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h)));
             CiSENode.setClusterId(-1);
             CiSENode.setId( nodes[i].data('id') );
+            CiSENode.nodeRepulsion = typeof options.nodeRepulsion === 'function' ? options.nodeRepulsion(cytoNode) : options.nodeRepulsion;
             rootGraph.add(CiSENode);
 
             // Map the node
@@ -307,8 +309,8 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
         if(sourceNode === targetNode)
             continue;
 
-        let ciseEdge = self.newEdge(sourceNode, targetNode, null);
-
+        let ciseEdge = self.newEdge(sourceNode, targetNode, null);       
+        
         // Edge is intracluster
         // Remember: If source or target is unclustered then edge is Not intracluster
         if(sourceClusterID === targetClusterID && sourceClusterID !== -1 && targetClusterID !== -1){
@@ -319,6 +321,7 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters){
             ciseEdge.isIntraCluster = false;
             this.graphManager.add(ciseEdge, ciseEdge.getSource(), ciseEdge.getTarget());
         }
+        ciseEdge.edgeElasticity = typeof options.springCoeff === 'function' ? options.springCoeff(e) : options.springCoeff;
     }
 
     // Populate the references of GraphManager
@@ -756,9 +759,9 @@ CiSELayout.prototype.calcIdealEdgeLengths = function(isPolishingStep){
 
         // Loosen in the polishing step to avoid overlaps
         if(isPolishingStep)
-            edge.idealLength = 1.5 * this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;
+            edge.idealLength = 1.5 * CiSEConstants.DEFAULT_EDGE_LENGTH * this.idealInterClusterEdgeLengthCoefficient;
         else
-            edge.idealLength = this.idealEdgeLength * this.idealInterClusterEdgeLengthCoefficient;
+            edge.idealLength = CiSEConstants.DEFAULT_EDGE_LENGTH * this.idealInterClusterEdgeLengthCoefficient;
     }
 
     // Update in-nodes edge's lengths

@@ -37,14 +37,6 @@ class Layout extends ContinuousLayout {
     else
       CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
 
-    if (options.springCoeff !== null && options.springCoeff !== undefined)
-      CiSEConstants.DEFAULT_SPRING_STRENGTH = options.springCoeff;
-    else
-      CiSEConstants.DEFAULT_SPRING_STRENGTH = 1.5 * FDLayoutConstants.DEFAULT_SPRING_STRENGTH;
-
-    if (options.nodeRepulsion != null)
-      CiSEConstants.DEFAULT_REPULSION_STRENGTH = FDLayoutConstants.DEFAULT_REPULSION_STRENGTH = options.nodeRepulsion;
-
     if (options.gravity != null)
       CiSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
 
@@ -83,7 +75,7 @@ class Layout extends ContinuousLayout {
     let root = this.root = graphManager.addRoot();
 
     // Construct the GraphManager according to the graph from Cytoscape
-    this.idToLNode = ciseLayout.convertToClusteredGraph(nodes, edges, clusters);
+    this.idToLNode = ciseLayout.convertToClusteredGraph(nodes, edges, clusters, this.options);
 
     //This method updates whether this graph is connected or not
     root.updateConnected();

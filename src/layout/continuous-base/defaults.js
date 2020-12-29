@@ -19,5 +19,7 @@ module.exports = Object.freeze({
 
   // infinite layout options
   infinite: false, // overrides all other options for a forces-all-the-time mode
-  packComponents: false
+  packComponents: false,
+  nodeRepulsion: 4500,
+  springCoeff: 0.45
 });
