@@ -100,6 +100,14 @@
     </div>
     <button id="removeHighlights" class="removeHighlights" type="button"><b>Remove Highlights</b></button>
   </div>
+  <div class="midline">
+    <button id="addCluster" class="open-button tooltip" type="button"><b>Add Cluster</b>
+      <span class="tooltiptext">Add a new cluster with selected nodes</span>
+    </button>
+    <button id="removeCluster" class="open-button midleft tooltip" type="button"><b>Remove Cluster</b>
+      <span class="tooltiptext">Remove the selected nodes from their cluster</span>
+    </button>
+  </div>
   <div class="line">
     <button id="graphml" onclick="document.getElementById('file-input').click();"><b>Import Graphml</b></button>
     <input id="file-input" type="file" name="name" style="display: none;" />
@@ -135,9 +143,7 @@
   ];
 
   let clusterColors;
-
   let exported = false;
-
   let rgbToHex = function (rgb) {
     let hex = Number(rgb).toString(16);
     if (hex.length < 2) {
@@ -184,7 +190,7 @@
           }
         }
       }
-      
+
       let clusterColors = [];
       let uniqueClusterIDs = [];
 
@@ -566,6 +572,215 @@
     var instance1 = window.cy.viewUtilities();
     instance1.removeHighlights();
   });
+
+  //
+  // ADD A NEW CLUSTER WITH SELECTED NODES
+  //
+  document.getElementById("addCluster").addEventListener("click", function () {
+    if(window.cy.nodes(":selected").length == 0)
+      return;
+    let clusterColors = [];
+    let uniqueClusterIDs = [];
+    let tempArrayOfClusterArrays = new Array(arrayOfClusterArrays.length+1);
+
+    window.cy.nodes(":unselected").forEach(function (node) {
+      let clusterID = node.data('clusterID');
+      if(clusterID != -1){  
+        if (uniqueClusterIDs.includes(clusterID)) {
+          if (tempArrayOfClusterArrays[clusterID] === undefined){
+            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
+          }
+          else
+            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
+        } 
+        else {
+            uniqueClusterIDs.push(clusterID);
+            clusterColors.push(node.style('background-color'));
+          if(tempArrayOfClusterArrays[clusterID] != null)
+            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
+          else
+            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
+        }
+      }
+    });
+    arrayOfClusterArrays = tempArrayOfClusterArrays;
+
+    let newID = arrayOfClusterArrays.length;
+    var r=Math.floor(Math.random() * Math.floor(255));
+    var g=Math.floor(Math.random() * Math.floor(255));
+    var b=Math.floor(Math.random() * Math.floor(255));
+    let rgbColor = '#' + fullColorHex(r, g, b);
+    arrayOfClusterArrays.push([]);
+    uniqueClusterIDs.push(newID.toString());
+    clusterColors.push(rgbColor);
+
+    window.cy.nodes(":selected").forEach(function (node){
+      node.style("background-color",rgbColor);
+      node.data("clusterID",newID.toString());
+      arrayOfClusterArrays[newID].push(node.data("id"))
+    });
+
+    let index = 0;
+    let tempArray = [];
+
+    for(let i = 0; i < arrayOfClusterArrays.length; i++){
+      if(arrayOfClusterArrays[i] == null){
+        uniqueClusterIDs.pop(i.toString());
+        index = index + 1;
+        console.log(index);
+      }
+      else{
+        if(!uniqueClusterIDs.includes((i-index).toString()))
+          uniqueClusterIDs.push((i-index).toString());
+        tempArray.push([]);
+        let selector =  '[clusterID = \"' + i +'\"]';
+        window.cy.nodes(selector).forEach(function (node) {
+          node.data("clusterID", (i-index).toString());
+          tempArray[tempArray.length-1].push(node.data('id'));
+        });
+      }
+    }
+
+    arrayOfClusterArrays = tempArray;
+    
+    window.cy.style()
+        .selector('edge').style({
+          'curve-style': 'bezier',
+          'width': 5,
+          'opacity': 0.65,
+          'line-color': function (ele) {
+            let source = ele.source();
+            let target = ele.target();
+            for (let i = 0; i < arrayOfClusterArrays.length; i++)
+              if (arrayOfClusterArrays[i].includes(source.data('id')) &&
+              arrayOfClusterArrays[i].includes(target.data('id')))
+                return source.style("background-color");
+
+            return '#756D76';
+          }
+        }).update();
+
+      // Update Legend----
+      // Clear Legend
+      let legend = document.getElementById('legend');
+      let child = legend.lastElementChild;
+      while (child && child.id !== "unclusteredLegend") {
+        legend.removeChild(child);
+        child = legend.lastElementChild;
+      }
+
+      // Repopulate Legend
+      for (let i = 0; i < clusterColors.length; i++) {
+        var li = document.createElement('li');
+        var el_span = document.createElement('span');
+        el_span.style.background = clusterColors[i];
+        let textnode = document.createTextNode("Cluster #: " + i);
+        li.appendChild(el_span);
+        li.appendChild(textnode);
+        document.getElementById('legend').appendChild(li);
+      }
+  });
+
+  //
+  ///REMOVE SELECTED NODES FROM THE CLUSTER 
+  //
+  document.getElementById("removeCluster").addEventListener("click", function () {
+    if(window.cy.nodes(":selected").length == 0)
+      return;
+    let clusterColors = [];
+    let uniqueClusterIDs = [];
+    let tempArrayOfClusterArrays = new Array(arrayOfClusterArrays.length);
+
+    window.cy.nodes(":unselected").forEach(function (node) {
+      let clusterID = node.data('clusterID');
+      if(clusterID != -1){
+        if (uniqueClusterIDs.includes(clusterID)) {
+          if (tempArrayOfClusterArrays[clusterID] === undefined){
+            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
+          }
+          else
+            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
+        } 
+        else {
+          uniqueClusterIDs.push(clusterID);
+          clusterColors.push(node.style('background-color'));
+          if(tempArrayOfClusterArrays[clusterID] != null)
+            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
+          else
+            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
+        }
+      }
+    });
+
+    arrayOfClusterArrays = tempArrayOfClusterArrays;
+
+    window.cy.nodes(":selected").forEach(function (node){
+      node.style("background-color","#756D76");
+      node.data("clusterID",(-1).toString());
+    });
+
+    let index = 0;
+    let tempArray = [];
+
+    for(let i = 0; i < arrayOfClusterArrays.length; i++){
+      if(arrayOfClusterArrays[i] == null){
+        uniqueClusterIDs.pop(i.toString());
+        index = index + 1;
+        console.log(index);
+      }
+      else{
+        if(!uniqueClusterIDs.includes((i-index).toString()))
+          uniqueClusterIDs.push((i-index).toString());
+        tempArray.push([]);
+        let selector =  '[clusterID = \"' + i +'\"]';
+        window.cy.nodes(selector).forEach(function (node) {
+          node.data("clusterID", (i-index).toString());
+          tempArray[tempArray.length-1].push(node.data('id'));
+        });
+      }
+    }
+
+    arrayOfClusterArrays = tempArray;
+    
+    window.cy.style()
+        .selector('edge').style({
+          'curve-style': 'bezier',
+          'width': 5,
+          'opacity': 0.65,
+          'line-color': function (ele) {
+            let source = ele.source();
+            let target = ele.target();
+            for (let i = 0; i < arrayOfClusterArrays.length; i++)
+              if (arrayOfClusterArrays[i].includes(source.data('id')) &&
+              arrayOfClusterArrays[i].includes(target.data('id')))
+                return source.style("background-color");
+
+            return '#756D76';
+          }
+        }).update();
+
+      // Update Legend----
+      // Clear Legend
+      let legend = document.getElementById('legend');
+      let child = legend.lastElementChild;
+      while (child && child.id !== "unclusteredLegend") {
+        legend.removeChild(child);
+        child = legend.lastElementChild;
+      }
+
+      // Repopulate Legend
+      for (let i = 0; i < clusterColors.length; i++) {
+        var li = document.createElement('li');
+        var el_span = document.createElement('span');
+        el_span.style.background = clusterColors[i];
+        let textnode = document.createTextNode("Cluster #: " + i);
+        li.appendChild(el_span);
+        li.appendChild(textnode);
+        document.getElementById('legend').appendChild(li);
+      }
+  
+  });
+
 
   // Initial Layout
   document.addEventListener('DOMContentLoaded', function () {

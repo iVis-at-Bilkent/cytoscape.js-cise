@@ -82,10 +82,19 @@ h1 {
 
 }
 
-.line {
+.midline {
     position: absolute;
     margin-top: 10px;
-    margin-bottom: 10px;
+    z-index: 901;
+}
+
+.midleft {
+    margin-left: 10px;
+}
+
+.line {
+    position: absolute;
+    margin-top: 50px;
     z-index: 900;
 }
 
@@ -185,12 +194,34 @@ h1 {
 
 .edgeCrossing {
     position: absolute;
-    left: 15px;
-    top: 150px;
+    left: 10px;
+    top: 175px;
 }
 
 .info {
     position: absolute;
-    left: 15px;
-    top: 120px;
+    left: 10px;
+    top: 155px;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black; 
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #ddd;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+    position: absolute;
+    z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
 }
