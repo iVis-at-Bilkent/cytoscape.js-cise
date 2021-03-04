@@ -28,6 +28,7 @@ let Layout = require('avsdf-base').layoutBase.FDLayout;
 let HashMap = require('avsdf-base').layoutBase.HashMap;
 const PointD = require('avsdf-base').layoutBase.PointD;
 const DimensionD = require('avsdf-base').layoutBase.DimensionD;
+const IGeometry = require('avsdf-base').layoutBase.IGeometry;
 let AVSDFConstants = require('avsdf-base').AVSDFConstants;
 const AVSDFLayout = require('avsdf-base').AVSDFLayout;
 const CoSELayout = require('cose-base').CoSELayout;
@@ -309,8 +310,8 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters, 
         if(sourceNode === targetNode)
             continue;
 
-        let ciseEdge = self.newEdge(sourceNode, targetNode, null);       
-        
+        let ciseEdge = self.newEdge(sourceNode, targetNode, null);
+
         // Edge is intracluster
         // Remember: If source or target is unclustered then edge is Not intracluster
         if(sourceClusterID === targetClusterID && sourceClusterID !== -1 && targetClusterID !== -1){
@@ -807,11 +808,11 @@ CiSELayout.prototype.calcSpringForces = function(){
  */
 CiSELayout.prototype.calcRepulsionForces = function() {
     let lNodes = this.graphManager.getNonOnCircleNodes();
+
     for(let i = 0; i < lNodes.length; i++){
         let nodeA = lNodes[i];
         for(let j = i + 1; j < lNodes.length; j++){
             let nodeB = lNodes[j];
-
             this.calcRepulsionForce(nodeA, nodeB);
         }
     }
@@ -834,6 +835,7 @@ CiSELayout.prototype.calcRepulsionForces = function() {
             if (childCiSENode !== inCircleNode)
             {
                 this.calcRepulsionForce(inCircleNode, childCiSENode);
+
             }
         }
     }
@@ -917,6 +919,7 @@ CiSELayout.prototype.calcTotalForces = function(){
  * Also, it deals with swapping of two consecutive nodes on a circle in
  * step 4.
  */
+
 CiSELayout.prototype.moveNodes = function(){
     if (this.phase !== CiSELayout.PHASE_PERFORM_SWAP)
     {
@@ -943,9 +946,62 @@ CiSELayout.prototype.moveNodes = function(){
         for (let i = 0; i < inCircleNodes.length; i++)
         {
             inCircleNode = inCircleNodes[i];
-            // TODO: workaround to force inner nodes to stay inside
-            inCircleNode.displacementX /= 20.0;
-            inCircleNode.displacementY /= 20.0;
+            let parentNode = inCircleNode.getParent();
+            let distanceFromCenter = Math.sqrt(Math.pow(inCircleNode.getCenterX() + inCircleNode.displacementX - parentNode.getCenterX(),2)  +
+                Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(),2)) + inCircleNode.getDiagonal() ;
+
+            if (distanceFromCenter >= parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/4)
+            {
+                parentNode.getChild().setInnerNodePushCount( parentNode.getChild().getInnerNodePushCount() 
+                    + distanceFromCenter - parentNode.getChild().getRadius());
+
+                let parentNodeOldCenterX = parentNode.getCenterX();
+                let parentNodeOldCenterY = parentNode.getCenterY();
+                
+                if(parentNode.getChild().getInnerNodePushCount()/(parentNode.getChild().getInCircleNodes().length)
+                 > 130*parentNode.getChild().getOnCircleNodes().length)
+                {
+
+                    parentNode.getChild().setInnerNodePushCount(0);
+                    parentNode.getChild().setAdditionalNodeSeparation(
+                        parentNode.getChild().getAdditionalNodeSeparation() + 0.5
+                        //(parentNode.getChild().getGraphManager().getLayout().getNodeSeparation())/40
+                        );
+                    parentNode.getChild().reCalculateCircleSizeAndRadius();
+                    parentNode.getChild().reCalculateNodePositions();
+                    
+                    inCircleNode.displacementX = parentNode.getCenterX() - parentNodeOldCenterX;
+                    inCircleNode.displacementY = parentNode.getCenterY() - parentNodeOldCenterY;
+                }
+                else 
+                {
+
+                    let hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(),inCircleNode.getCenterY(),
+                    inCircleNode.getCenterX()+inCircleNode.displacementX,inCircleNode.getCenterY()+inCircleNode.displacementY,
+                    parentNodeOldCenterX,parentNodeOldCenterY,
+                    parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/4 - inCircleNode.getDiagonal() + 1); 
+
+                        if(hit !== null){
+                            if(hit[0] > 0)
+                            {
+                                let displacementLength = Math.sqrt(Math.pow(inCircleNode.displacementX,2)+Math.pow(inCircleNode.displacementY,2))
+                                inCircleNode.displacementX = hit[0] * (inCircleNode.displacementX ) - (inCircleNode.displacementX/displacementLength);
+                                inCircleNode.displacementY = hit[0] * (inCircleNode.displacementY ) - (inCircleNode.displacementY/displacementLength);
+                            }
+                            else {
+                                inCircleNode.displacementX = 0;
+                                inCircleNode.displacementY = 0;
+                            }
+                        }
+                        else
+                        {
+                            inCircleNode.displacementX = parentNode.getCenterX() - parentNodeOldCenterX;
+                            inCircleNode.displacementY = parentNode.getCenterY() - parentNodeOldCenterY;
+                        }
+                    
+                }
+            }
+
             inCircleNode.move();
         }
 
@@ -1220,6 +1276,7 @@ CiSELayout.prototype.findAndMoveInnerNodes = function (){
 
             // Look for an inner node and move it inside
             let innerNode = this.findInnerNode(ciseCircle);
+
 
             while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes)
             {

@@ -64,6 +64,9 @@ function CiSECircle(parent, graphMgr, vNode) {
     // special circumstances (e.g. less than two inter-cluster edge) are set as
     // may not be reversed as well.
     this.mayBeReversed = true;
+
+    this.innerNodePushCount = null;
+
 }
 
 CiSECircle.prototype = Object.create(LGraph.prototype);
@@ -97,6 +100,19 @@ CiSECircle.prototype.getAdditionalNodeSeparation = function() {
         this.setAdditionalNodeSeparation(0.0);
     }
     return this.additionalNodeSeparation;
+};
+
+
+CiSECircle.prototype.setInnerNodePushCount = function(innerNodePushCount) {
+    this.innerNodePushCount = innerNodePushCount;
+};
+
+CiSECircle.prototype.getInnerNodePushCount = function() {
+    if(this.innerNodePushCount === null)
+    {
+        this.setInnerNodePushCount(0);
+    }
+    return this.innerNodePushCount;
 };
 
 // This method returns nodes that don't have neighbors outside this circle.
@@ -649,7 +665,8 @@ CiSECircle.prototype.moveOnCircleNodeInside = function(node) {
     //calculateNodePositions
     this.reCalculateNodeAnglesAndPositions();
 
-    node.setCenter(this.getParent().getCenterX(), this.getParent().getCenterY());
+    node.setCenter(this.getParent().getCenterX() + this.getRadius() * (Math.random() - 0.5),
+     this.getParent().getCenterY() + this.getRadius() * (Math.random() - 0.5));
 };
 
 /**
@@ -669,13 +686,54 @@ CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
     }
 
     let layout = this.getGraphManager().getLayout();
-    let nodeSeparation = layout.getNodeSeparation();
+    let nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
 
     let perimeter = totalDiagonal + this.getOnCircleNodes().length * nodeSeparation;
     this.radius = perimeter / (2 * Math.PI);
     this.calculateParentNodeDimension();
 };
 
+//
+// This method recalculates the node positions 
+// when the circle's radius changes
+// It is called when additional node seperation is increased
+//
+CiSECircle.prototype.reCalculateNodePositions = function () {
+
+    let layout = this.getGraphManager().getLayout();
+    let nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
+
+    let inOrderCopy = this.onCircleNodes;
+    inOrderCopy.sort(function(a, b) {
+        return a.getOnCircleNodeExt().getIndex() - b.getOnCircleNodeExt().getIndex();
+    });
+
+    let parentCenterX = this.getParent().getCenterX();
+    let parentCenterY = this.getParent().getCenterY();
+
+    for (let i = 0; i < inOrderCopy.length; i++)
+    {
+        let node = inOrderCopy[i];
+        let angle;
+
+        if (i === 0)
+        {
+            angle = node.getOnCircleNodeExt().getAngle();
+        }
+        else
+        {
+            let previousNode =  inOrderCopy[i - 1];
+            // => angle in radian = (2*PI)*(circular distance/(2*PI*r))
+
+            angle = previousNode.getOnCircleNodeExt().getAngle() +
+                    (node.getHalfTheDiagonal() + nodeSeparation + previousNode.getHalfTheDiagonal()) / this.radius;
+        }
+
+        node.getOnCircleNodeExt().setAngle(angle);
+        node.setCenter(parentCenterX + this.radius * Math.cos(angle),
+                       parentCenterY + this.radius * Math.sin(angle));
+    }
+};
 /**
  * This method goes over all on-circle nodes and re-calculates their angles
  * and corresponding positions. This method should be called when on-circle
