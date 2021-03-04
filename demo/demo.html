@@ -617,6 +617,7 @@
     window.cy.nodes(":selected").forEach(function (node){
       node.style("background-color",rgbColor);
       node.data("clusterID",newID.toString());
+      node._private.data.color = r+" "+g+" "+b;
       arrayOfClusterArrays[newID].push(node.data("id"))
     });
 
@@ -627,7 +628,6 @@
       if(arrayOfClusterArrays[i] == null){
         uniqueClusterIDs.pop(i.toString());
         index = index + 1;
-        console.log(index);
       }
       else{
         if(!uniqueClusterIDs.includes((i-index).toString()))
@@ -726,7 +726,6 @@
       if(arrayOfClusterArrays[i] == null){
         uniqueClusterIDs.pop(i.toString());
         index = index + 1;
-        console.log(index);
       }
       else{
         if(!uniqueClusterIDs.includes((i-index).toString()))
