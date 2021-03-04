@@ -14,10 +14,6 @@ M. Belviranli, A. Dilek and U. Dogrusoz, "[CiSE: A Circular Spring Embedder Layo
 
 <p align="center"><img src="demo/demo.gif" width="526" height="411"></p>
 
-
-In demo if you want to have nodes in cluster circles, check "Allow Nodes in Circle" and input the maximum ratio of nodes inside the cluster circle.
-Also, if you check the "Apply Markov clustering on Load", markov clustering is applied to nodes of example data or your imported graph data when you load it.
-
 A detailed illustration of CiSE can also be found [here.](https://www.youtube.com/watch?v=SMDAQajK-E8)
 
 ## Dependencies
