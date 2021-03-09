@@ -225,3 +225,32 @@ h1 {
 .tooltip:hover .tooltiptext {
     visibility: visible;
 }
+
+.infoImg {
+    position: absolute;
+    margin-left: 330px;
+    margin-top: -25px;
+    width:18px;
+    height:18px;
+}
+
+.tooltipImg {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltipImg .tooltipImgtext {
+    visibility: hidden;
+    width: 400px;
+    background-color: black;
+    color: #ddd;
+    text-align: left;
+    padding: 8px 8px;
+    border-radius: 6px;
+    position: absolute;
+    z-index: 999;
+}
+
+.tooltipImg:hover .tooltipImgtext {
+    visibility: visible;
+}

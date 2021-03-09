@@ -98,8 +98,25 @@
         <button type="button" class="btn cancel" onclick="closeForm()"><b>Close Options</b></button>
       </div>
     </div>
-    <button id="removeHighlights" class="removeHighlights" type="button"><b>Remove Highlights</b></button>
+    <button id="removeHighlights" class="removeHighlights" type="button"><b>Remove Highlights</b></button> 
+    <div class="infoImg">
+      <div class="tooltipImg">
+        <img src="information-button.png" style="display: inline-block; width:18px; height:18px"/>
+        <span class="tooltipImgtext">
+          CiSE Demo Help<br /><br /> 
+          With this demo, you can:
+          <ul>
+            <li>Import a graph in GraphML format. If you'd like your graph to be automatically clustered on load, check "Apply Markov Clustering on Load"</li>
+            <li>Lay it out using CiSE style</li>
+            <li>Right-click on a node to add some random neighbors</li>
+            <li>Change current clustering using Add/Remove Cluster buttons</li>
+            <li>Adjust layout options (please refer to the API in README for an explanation of these options)</li>
+          </ul>
+        </span>
+      </div>
+    </div>
   </div>
+
   <div class="midline">
     <button id="addCluster" class="open-button tooltip" type="button"><b>Add Cluster</b>
       <span class="tooltiptext">Add a new cluster with selected nodes</span>
@@ -579,6 +596,8 @@
   document.getElementById("addCluster").addEventListener("click", function () {
     if(window.cy.nodes(":selected").length == 0)
       return;
+    
+
     let clusterColors = [];
     let uniqueClusterIDs = [];
     let tempArrayOfClusterArrays = new Array(arrayOfClusterArrays.length+1);
