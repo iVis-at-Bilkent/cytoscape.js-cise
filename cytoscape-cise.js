@@ -1856,6 +1856,7 @@ CiSELayout.prototype.step3Init = function () {
     this.step = CiSELayout.STEP_3;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    this.coolingFactor = 0.7;
     this.coolingCycle = 0;
 };
 
@@ -1872,6 +1873,7 @@ CiSELayout.prototype.step4Init = function () {
     for (var i = 0; i < this.graphManager.getOnCircleNodes().length; i++) {
         this.graphManager.getOnCircleNodes()[i].getOnCircleNodeExt().updateSwappingConditions();
     }
+    this.coolingFactor = 0.7;
     this.coolingCycle = 0;
 };
 
@@ -1885,6 +1887,7 @@ CiSELayout.prototype.step5Init = function () {
     this.step = CiSELayout.STEP_5;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    this.coolingFactor = 0.4;
     this.coolingCycle = 0;
 };
 
@@ -2156,7 +2159,7 @@ CiSELayout.prototype.moveNodes = function () {
                 var parentNodeOldCenterX = parentNode.getCenterX();
                 var parentNodeOldCenterY = parentNode.getCenterY();
 
-                if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 130 * parentNode.getChild().getOnCircleNodes().length) {
+                if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 100 * parentNode.getChild().getOnCircleNodes().length) {
 
                     parentNode.getChild().setInnerNodePushCount(0);
                     parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 0.5
