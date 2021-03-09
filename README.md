@@ -16,6 +16,12 @@ M. Belviranli, A. Dilek and U. Dogrusoz, "[CiSE: A Circular Spring Embedder Layo
 
 A detailed illustration of CiSE can also be found [here.](https://www.youtube.com/watch?v=SMDAQajK-E8)
 
+For unclustered graphs, Markov Clustering in the cytoscape core library can be used for clustering:
+
+```js
+let clusters = window.cy.elements().markovClustering( options );
+```
+
 ## Dependencies
 
  * Cytoscape.js: ^3.2.0
