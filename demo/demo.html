@@ -600,10 +600,14 @@
 
     let clusterColors = [];
     let uniqueClusterIDs = [];
+    let colorMapping = [];
     let tempArrayOfClusterArrays = new Array(arrayOfClusterArrays.length+1);
 
     window.cy.nodes(":unselected").forEach(function (node) {
+
       let clusterID = node.data('clusterID');
+      node.data('clusterID',clusterID.toString());
+
       if(clusterID != -1){  
         if (uniqueClusterIDs.includes(clusterID)) {
           if (tempArrayOfClusterArrays[clusterID] === undefined){
@@ -613,8 +617,10 @@
             tempArrayOfClusterArrays[clusterID].push(node.data("id"));
         } 
         else {
+            colorMapping.push({clusterID:node.style('background-color')});
             uniqueClusterIDs.push(clusterID);
             clusterColors.push(node.style('background-color'));
+            
           if(tempArrayOfClusterArrays[clusterID] != null)
             tempArrayOfClusterArrays[clusterID].push(node.data("id"));
           else
@@ -632,6 +638,7 @@
     arrayOfClusterArrays.push([]);
     uniqueClusterIDs.push(newID.toString());
     clusterColors.push(rgbColor);
+    colorMapping.push({newID:rgbColor});
 
     window.cy.nodes(":selected").forEach(function (node){
       node.style("background-color",rgbColor);
