@@ -208,4 +208,4 @@ This project is set up to automatically be published to npm and bower.  To publi
 
 ## Team
 
-  * [Alihan Okka](https://github.com/alihanokka) and [Ugur Dogrusoz](https://github.com/ugurdogrusoz) of [i-Vis at Bilkent University](http://www.cs.bilkent.edu.tr/~ivis)
+  * [Alihan Okka](https://github.com/alihanokka), [H. Eren Calik](https://github.com/herencalik) and [Ugur Dogrusoz](https://github.com/ugurdogrusoz) of [i-Vis at Bilkent University](http://www.cs.bilkent.edu.tr/~ivis)
