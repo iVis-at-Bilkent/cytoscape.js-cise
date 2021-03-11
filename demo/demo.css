@@ -198,12 +198,6 @@ h1 {
     top: 175px;
 }
 
-.info {
-    position: absolute;
-    left: 10px;
-    top: 155px;
-}
-
 .tooltip {
     position: relative;
     display: inline-block;
@@ -228,8 +222,8 @@ h1 {
 
 .infoImg {
     position: absolute;
-    margin-left: 330px;
-    margin-top: -25px;
+    margin-left: 165px;
+    margin-top: -57.5px;
     width:18px;
     height:18px;
 }
