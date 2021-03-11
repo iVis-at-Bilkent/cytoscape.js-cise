@@ -16,10 +16,34 @@ M. Belviranli, A. Dilek and U. Dogrusoz, "[CiSE: A Circular Spring Embedder Layo
 
 A detailed illustration of CiSE can also be found [here.](https://www.youtube.com/watch?v=SMDAQajK-E8)
 
-For unclustered graphs, Markov Clustering in the cytoscape core library can be used for clustering:
+For unclustered graphs, Markov Clustering in the cytoscape core library can be used for clustering. You need to set the "clusterID" of the nodes according to their clusters and create an array of arrays where each array is a cluster that contains node IDs. For example:
 
 ```js
 let clusters = window.cy.elements().markovClustering( options );
+
+for(var i = 0; i<clusters.length; i++){
+  for(var j = 0; j<clusters[i].length; j++){
+    clusters[i][j]._private.data.clusterID = i;
+  }
+}
+
+let arrayOfClusterArrays;
+window.cy.nodes().forEach(function (node) {
+ let clusterID = node.data('clusterID');
+ if (uniqueClusterIDs.includes(clusterID)) {
+   if(arrayOfClusterArrays[clusterID] == undefined){
+     arrayOfClusterArrays[clusterID] = [];
+   }
+   else{
+     arrayOfClusterArrays[clusterID].push(node.data('id'));
+   }
+ }
+ else {
+   arrayOfClusterArrays.push([node.data('id')]);
+ }
+ 
+var layout = window.cy.layout({name: 'cise',clusters: arrayOfClusterArrays});
+
 ```
 
 ## Dependencies
