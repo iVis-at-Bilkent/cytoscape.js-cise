@@ -2153,13 +2153,13 @@ CiSELayout.prototype.moveNodes = function () {
             var parentNode = inCircleNode.getParent();
             var distanceFromCenter = Math.sqrt(Math.pow(inCircleNode.getCenterX() + inCircleNode.displacementX - parentNode.getCenterX(), 2) + Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(), 2)) + inCircleNode.getDiagonal();
 
-            if (distanceFromCenter >= parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 4) {
+            if (distanceFromCenter >= parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 5) {
                 parentNode.getChild().setInnerNodePushCount(parentNode.getChild().getInnerNodePushCount() + distanceFromCenter - parentNode.getChild().getRadius());
 
                 var parentNodeOldCenterX = parentNode.getCenterX();
                 var parentNodeOldCenterY = parentNode.getCenterY();
 
-                if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 100 * parentNode.getChild().getOnCircleNodes().length) {
+                if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 80 * parentNode.getChild().getOnCircleNodes().length) {
 
                     parentNode.getChild().setInnerNodePushCount(0);
                     parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 0.5
