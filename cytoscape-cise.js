@@ -272,6 +272,8 @@ function CiSECircle(parent, graphMgr, vNode) {
     // may not be reversed as well.
     this.mayBeReversed = true;
 
+    // Holds the total amount of prevented displacement of inner nodes that try
+    // to escape the inner boundaries.
     this.innerNodePushCount = null;
 }
 
@@ -329,7 +331,7 @@ CiSECircle.prototype.getOutNodes = function () {
     return this.outNodes;
 };
 
-// This method returns nodes that don't have neighbors outside this circle.
+// This method returns nodes that reside on the circle.
 CiSECircle.prototype.getOnCircleNodes = function () {
     return this.onCircleNodes;
 };
@@ -812,7 +814,20 @@ CiSECircle.prototype.moveOnCircleNodeInside = function (node) {
     //calculateNodePositions
     this.reCalculateNodeAnglesAndPositions();
 
-    node.setCenter(this.getParent().getCenterX() + this.getRadius() * (Math.random() - 0.5), this.getParent().getCenterY() + this.getRadius() * (Math.random() - 0.5));
+    var randomX = void 0,
+        randomY = void 0;
+
+    // if(this.getRadius() > node.getHalfTheDiagonal*2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH*2){
+    //     do{
+    //         randomX = this.getRadius() * (Math.random() - 0.5);
+    //         randomY = this.getRadius() * (Math.random() - 0.5);
+    //     }while(Math.sqrt(randomX*randomX+randomY*randomY) >= (this.getRadius() - node.getHalfTheDiagonal*2));
+    // }
+    // else{
+    randomX = 0;
+    randomY = 0;
+    // }
+    node.setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
 };
 
 /**
@@ -2431,15 +2446,17 @@ CiSELayout.prototype.findAndMoveInnerNodes = function () {
             // It is a user parameter, retrieve it.
             var maxInnerNodes = Math.floor(ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle);
 
-            // Look for an inner node and move it inside
-            var innerNode = this.findInnerNode(ciseCircle);
+            if (ciseCircle.getOnCircleNodes().length >= 2) {
+                // Look for an inner node and move it inside
+                var innerNode = this.findInnerNode(ciseCircle);
 
-            while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes) {
-                this.moveInnerNode(innerNode);
-                innerNodeCount++;
+                while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes) {
+                    this.moveInnerNode(innerNode);
+                    innerNodeCount++;
 
-                if (innerNodeCount < maxInnerNodes) {
-                    innerNode = this.findInnerNode(ciseCircle);
+                    if (innerNodeCount < maxInnerNodes) {
+                        innerNode = this.findInnerNode(ciseCircle);
+                    }
                 }
             }
         }

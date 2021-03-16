@@ -978,7 +978,6 @@ CiSELayout.prototype.moveNodes = function(){
                 }
                 else 
                 {
-
                     let hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(),inCircleNode.getCenterY(),
                     inCircleNode.getCenterX()+inCircleNode.displacementX,inCircleNode.getCenterY()+inCircleNode.displacementY,
                     parentNodeOldCenterX,parentNodeOldCenterY,
@@ -1276,19 +1275,21 @@ CiSELayout.prototype.findAndMoveInnerNodes = function (){
         {
             // It is a user parameter, retrieve it.
             let maxInnerNodes = Math.floor(ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle);
+            
+            if(ciseCircle.getOnCircleNodes().length >= 2){
+                // Look for an inner node and move it inside
+                let innerNode = this.findInnerNode(ciseCircle);
 
-            // Look for an inner node and move it inside
-            let innerNode = this.findInnerNode(ciseCircle);
 
-
-            while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes)
-            {
-                this.moveInnerNode(innerNode);
-                innerNodeCount++;
-
-                if (innerNodeCount < maxInnerNodes)
+                while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes)
                 {
-                    innerNode = this.findInnerNode(ciseCircle);
+                    this.moveInnerNode(innerNode);
+                    innerNodeCount++;
+
+                    if (innerNodeCount < maxInnerNodes)
+                    {
+                        innerNode = this.findInnerNode(ciseCircle);
+                    }
                 }
             }
         }
