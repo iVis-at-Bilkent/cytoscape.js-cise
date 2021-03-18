@@ -817,16 +817,15 @@ CiSECircle.prototype.moveOnCircleNodeInside = function (node) {
     var randomX = void 0,
         randomY = void 0;
 
-    // if(this.getRadius() > node.getHalfTheDiagonal*2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH*2){
-    //     do{
-    //         randomX = this.getRadius() * (Math.random() - 0.5);
-    //         randomY = this.getRadius() * (Math.random() - 0.5);
-    //     }while(Math.sqrt(randomX*randomX+randomY*randomY) >= (this.getRadius() - node.getHalfTheDiagonal*2));
-    // }
-    // else{
-    randomX = 0;
-    randomY = 0;
-    // }
+    if (this.getRadius() > node.getHalfTheDiagonal * 2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH * 2) {
+        do {
+            randomX = this.getRadius() * (Math.random() - 0.5);
+            randomY = this.getRadius() * (Math.random() - 0.5);
+        } while (Math.sqrt(randomX * randomX + randomY * randomY) >= this.getRadius() - node.getHalfTheDiagonal * 2);
+    } else {
+        randomX = 0;
+        randomY = 0;
+    }
     node.setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
 };
 
@@ -2186,7 +2185,6 @@ CiSELayout.prototype.moveNodes = function () {
                     inCircleNode.displacementX = parentNode.getCenterX() - parentNodeOldCenterX;
                     inCircleNode.displacementY = parentNode.getCenterY() - parentNodeOldCenterY;
                 } else {
-
                     var hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(), inCircleNode.getCenterY(), inCircleNode.getCenterX() + inCircleNode.displacementX, inCircleNode.getCenterY() + inCircleNode.displacementY, parentNodeOldCenterX, parentNodeOldCenterY, parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 4 - inCircleNode.getDiagonal() + 1);
 
                     if (hit !== null) {
@@ -3426,19 +3424,18 @@ var Layout = function (_ContinuousLayout) {
     //Changing CiSEConstants if there is a particular option defined in 'options' part of Layout call
     var _this = _possibleConstructorReturn(this, (Layout.__proto__ || Object.getPrototypeOf(Layout)).call(this, options));
 
-    if (options.nodeSeparation !== null && options.nodeSeparation !== undefined) CiSEConstants.DEFAULT_NODE_SEPARATION = options.nodeSeparation;else CiSEConstants.DEFAULT_NODE_SEPARATION = FDLayoutConstants.DEFAULT_EDGE_LENGTH / 4;
+    if (options.nodeSeparation !== null && options.nodeSeparation !== undefined) CiSEConstants.DEFAULT_NODE_SEPARATION = options.nodeSeparation;
 
-    if (options.idealInterClusterEdgeLengthCoefficient !== null && options.idealInterClusterEdgeLengthCoefficient !== undefined) CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.idealInterClusterEdgeLengthCoefficient;else CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = 1.4;
+    if (options.idealInterClusterEdgeLengthCoefficient !== null && options.idealInterClusterEdgeLengthCoefficient !== undefined) CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.idealInterClusterEdgeLengthCoefficient;
 
-    if (options.allowNodesInsideCircle !== null && options.allowNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.allowNodesInsideCircle;else CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
+    if (options.allowNodesInsideCircle !== null && options.allowNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.allowNodesInsideCircle;
 
-    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;else CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
+    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;
 
     if (options.gravity != null) CiSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
 
     if (options.gravityRange != null) CiSEConstants.DEFAULT_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_GRAVITY_RANGE_FACTOR = options.gravityRange;
 
-    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined) CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;else CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
     return _this;
   }
 
@@ -3694,23 +3691,37 @@ module.exports = Object.freeze({
   refresh: 10, // number of ticks per frame; higher is faster but more jerky
   maxIterations: 2500, // max iterations before the layout will bail out
   maxSimulationTime: 5000, // max length in ms to run the layout
+  animationDuration: undefined, // animation duration used for animate:'end'
+  animationEasing: undefined, // Easing for animate:'end' 
   ungrabifyWhileSimulating: false, // so you can't drag nodes during layout
   fit: true, // on every layout reposition of nodes, fit the viewport
   padding: 30, // padding around the simulation
   boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
 
+  // positioning options
+  randomize: true, // use random node positions at beginning of layout
+  packComponents: false, // whether to pack components of the graph, if set to true, you should import cytoscape.js-layout-utilities  
+
+  // CiSE specific options
+  nodeSeparation: 12.5, // separation amount between nodes in a cluster
+  idealInterClusterEdgeLengthCoefficient: 1.4, // inter-cluster edge length factor 
+  allowNodesInsideCircle: false, // whether to pull on-circle nodes inside of the circle
+  maxRatioOfNodesInsideCircle: 0.1, // max percentage of the nodes in a circle that can move inside the circle
+  springCoeff: function springCoeff(edge) {
+    return 0.45;
+  }, // lower values give looser springs, higher values give tighter springs
+  nodeRepulsion: function nodeRepulsion(node) {
+    return 4500;
+  }, // node repulsion (non overlapping) multiplier
+  gravity: 0.25, // gravity force (constant)
+  gravityRange: 3.8, // gravity range (constant)
+
   // layout event callbacks
   ready: function ready() {}, // on layoutready
   stop: function stop() {}, // on layoutstop
-
-  // positioning options
-  randomize: true, // use random node positions at beginning of layout
-
+  //
   // infinite layout options
-  infinite: false, // overrides all other options for a forces-all-the-time mode
-  packComponents: false,
-  nodeRepulsion: 4500,
-  springCoeff: 0.45
+  infinite: false // overrides all other options for a forces-all-the-time mode  
 });
 
 /***/ }),

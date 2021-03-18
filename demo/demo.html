@@ -312,7 +312,7 @@
   // Update Cytoscape Layout and Run It
   document.getElementById("layoutButton").addEventListener("click", function () {  
     // Animate
-    let anim = !document.getElementById("end").checked;
+    let anim = document.getElementById("end").checked ? "end" : true;
     // Node Separation
     let nodeSep = document.getElementById("nodeSeparation").value;
     if (nodeSep === undefined || nodeSep === null || nodeSep === '' || nodeSep < 5) { nodeSep = 12.5 }
@@ -567,6 +567,7 @@
       allowNodesInsideCircle: allowNodesInCircle,
       maxRatioOfNodesInsideCircle: maxRatio,
       animate: anim,
+      animationDuration: 1000,
       clusters: arrayOfClusterArrays,
       refresh: 1,
       idealInterClusterEdgeLengthCoefficient: idealEdgeCoef,

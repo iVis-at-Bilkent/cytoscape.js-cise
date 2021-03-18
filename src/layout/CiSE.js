@@ -18,24 +18,16 @@ class Layout extends ContinuousLayout {
     //Changing CiSEConstants if there is a particular option defined in 'options' part of Layout call
     if (options.nodeSeparation !== null && options.nodeSeparation !== undefined)
       CiSEConstants.DEFAULT_NODE_SEPARATION = options.nodeSeparation;
-    else
-      CiSEConstants.DEFAULT_NODE_SEPARATION = FDLayoutConstants.DEFAULT_EDGE_LENGTH / 4;
 
     if (options.idealInterClusterEdgeLengthCoefficient !== null &&
       options.idealInterClusterEdgeLengthCoefficient !== undefined)
       CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = options.idealInterClusterEdgeLengthCoefficient;
-    else
-      CiSEConstants.DEFAULT_IDEAL_INTER_CLUSTER_EDGE_LENGTH_COEFF = 1.4;
 
     if (options.allowNodesInsideCircle !== null && options.allowNodesInsideCircle !== undefined)
       CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = options.allowNodesInsideCircle;
-    else
-      CiSEConstants.DEFAULT_ALLOW_NODES_INSIDE_CIRCLE = false;
 
     if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
       CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;
-    else
-      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
 
     if (options.gravity != null)
       CiSEConstants.DEFAULT_GRAVITY_STRENGTH = FDLayoutConstants.DEFAULT_GRAVITY_STRENGTH = options.gravity;
@@ -43,10 +35,6 @@ class Layout extends ContinuousLayout {
     if (options.gravityRange != null)
       CiSEConstants.DEFAULT_GRAVITY_RANGE_FACTOR = FDLayoutConstants.DEFAULT_GRAVITY_RANGE_FACTOR = options.gravityRange;
 
-    if (options.maxRatioOfNodesInsideCircle !== null && options.maxRatioOfNodesInsideCircle !== undefined)
-      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = options.maxRatioOfNodesInsideCircle;
-    else
-      CiSEConstants.DEFAULT_MAX_RATIO_OF_NODES_INSIDE_CIRCLE = 0.1;
   }
 
   prerun(state) {
