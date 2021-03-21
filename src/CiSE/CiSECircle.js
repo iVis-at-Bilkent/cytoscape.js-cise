@@ -632,14 +632,14 @@ CiSECircle.prototype.reverseNodes = function()
 };
 
 /**
- * This method removes given on-circle node from the circle and calls
- * reCalculateCircleSizeAndRadius and  reCalculateNodeAnglesAndPositions.
- * This method should be called when an inner node is found and to be moved
+ * This method removes given on-circle node from the circle and pushes it
+ * to its inner node list. It also readjusts the indexing of remaining on circle nodes.
+ * Should be called when an inner node is found and to be moved
  * inside the circle.
  * @param node
  */
-CiSECircle.prototype.moveOnCircleNodeInside = function(node) {
-
+CiSECircle.prototype.setOnCircleNodeInner = function(node) {
+    
     // Remove the node from on-circle nodes list and add it to in-circle
     // nodes list
     // Make sure it has not been already moved to the out node list
@@ -649,37 +649,47 @@ CiSECircle.prototype.moveOnCircleNodeInside = function(node) {
     }
 
     this.inCircleNodes.push(node);
-
-    // Re-adjust all order indexes of remaining on circle nodes.
+    
+    // Re-adjust all order indices of remaining on circle nodes.
     for (let i = 0; i < this.onCircleNodes.length; i++)
     {
         let onCircleNode = this.onCircleNodes[i];
 
         onCircleNode.getOnCircleNodeExt().setIndex(i);
     }
-
+    
     // De-register extension
     node.setAsNonOnCircleNode();
+}
+/**
+ * This method calls reCalculateCircleSizeAndRadius and  
+ * reCalculateNodeAnglesAndPositions and puts the innerNodes.
+ * This method should be called when an inner node is found and to be moved
+ * inside the circle.
+ * @param {Object[]} nodeList - array of nodes that are to be moved inside the circle
+ */
+CiSECircle.prototype.moveOnCircleNodeInside = function(nodeList) {
 
     // calculateRadius
     this.reCalculateCircleSizeAndRadius();
 
     //calculateNodePositions
     this.reCalculateNodeAnglesAndPositions();
-
     let randomX,randomY;
+    for(let i = 0; i<nodeList.length;i++){
 
-    if(this.getRadius() > node.getHalfTheDiagonal*2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH*2){
-        do{
-            randomX = this.getRadius() * (Math.random() - 0.5);
-            randomY = this.getRadius() * (Math.random() - 0.5);
-        }while(Math.sqrt(randomX*randomX+randomY*randomY) >= (this.getRadius() - node.getHalfTheDiagonal*2));
+        if(this.getRadius() > nodeList[i].getHalfTheDiagonal*2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH*2){
+            do{
+                randomX = this.getRadius() * (Math.random() - 0.5);
+                randomY = this.getRadius() * (Math.random() - 0.5);
+            }while(Math.sqrt(randomX*randomX+randomY*randomY) >= (this.getRadius() - node.getHalfTheDiagonal*2));
+        }
+        else{
+            randomX = 0;
+            randomY = 0; 
+        }
+        nodeList[i].setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
     }
-    else{
-        randomX = 0;
-        randomY = 0; 
-    }
-    node.setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
 };
 
 /**
@@ -687,6 +697,7 @@ CiSECircle.prototype.moveOnCircleNodeInside = function(node) {
  * to the sizes of the vertices and the node separation parameter.
  */
 CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
+    
     let totalDiagonal = 0;
     let onCircleNodes = this.getOnCircleNodes();
 
@@ -708,8 +719,8 @@ CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
 
 //
 // This method recalculates the node positions 
-// when the circle's radius changes
-// It is called when additional node seperation is increased
+// when the circle's radius changes.
+// It is called when additional node seperation is increased.
 //
 CiSECircle.prototype.reCalculateNodePositions = function () {
 
@@ -747,6 +758,7 @@ CiSECircle.prototype.reCalculateNodePositions = function () {
                        parentCenterY + this.radius * Math.sin(angle));
     }
 };
+
 /**
  * This method goes over all on-circle nodes and re-calculates their angles
  * and corresponding positions. This method should be called when on-circle

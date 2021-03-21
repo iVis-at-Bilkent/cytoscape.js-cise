@@ -163,7 +163,32 @@ CiSENode.prototype.move = function () {
     {
         this.getChild().updateBounds(true);
     }
+
 };
+
+/**
+ * This method moves a nonOnCircleNode's all inCircle children when
+ * it's dimension(width and height) is changed. It should only be called
+ * when the additional node seperation of the child circle is increased, which
+ * increases the dimension of the parent non-oncircle node and slightly changes its center.
+ * The small change in center of this non-oncircle node should be reflected to
+ * it's children immediately and before displacements caused by forces are applied.
+ */
+CiSENode.prototype.reflectCenterChangeToChildren = function (oldX,oldY) {
+    
+    if (this.getChild() !== null && this.getChild() !== undefined )
+    {
+        let innCircleNodes = this.getChild().getInCircleNodes();
+        let centerX = this.getCenterX();
+        let centerY = this.getCenterY();
+        
+        for(let i = 0; i < innCircleNodes.length; i++) {
+            let node = innCircleNodes[i];
+            node.moveBy(centerX-oldX, centerY-oldY);
+        }
+    }
+
+}
 
 /**
  * This method resets displacement values

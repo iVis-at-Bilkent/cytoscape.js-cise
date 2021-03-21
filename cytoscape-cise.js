@@ -410,13 +410,13 @@ CiSECircle.prototype.calculateParentNodeDimension = function () {
     var maxOnCircleNodeDimension = Number.MIN_SAFE_INTEGER;
 
     for (var i = 0; i < this.onCircleNodes.length; i++) {
-        var node = this.onCircleNodes[i];
+        var _node = this.onCircleNodes[i];
 
-        if (node.getWidth() > maxOnCircleNodeDimension) {
-            maxOnCircleNodeDimension = node.getWidth();
+        if (_node.getWidth() > maxOnCircleNodeDimension) {
+            maxOnCircleNodeDimension = _node.getWidth();
         }
-        if (node.getHeight() > maxOnCircleNodeDimension) {
-            maxOnCircleNodeDimension = node.getHeight();
+        if (_node.getHeight() > maxOnCircleNodeDimension) {
+            maxOnCircleNodeDimension = _node.getHeight();
         }
     }
 
@@ -770,8 +770,8 @@ CiSECircle.prototype.reverseNodes = function () {
     var noOfNodesOnCircle = this.getOnCircleNodes().length;
 
     for (var i = 0; i < noOfNodesOnCircle; i++) {
-        var node = onCircleNodes[i];
-        var nodeExt = node.getOnCircleNodeExt();
+        var _node2 = onCircleNodes[i];
+        var nodeExt = _node2.getOnCircleNodeExt();
 
         nodeExt.setIndex((noOfNodesOnCircle - nodeExt.getIndex()) % noOfNodesOnCircle);
     }
@@ -779,14 +779,7 @@ CiSECircle.prototype.reverseNodes = function () {
     this.reCalculateNodeAnglesAndPositions();
 };
 
-/**
- * This method removes given on-circle node from the circle and calls
- * reCalculateCircleSizeAndRadius and  reCalculateNodeAnglesAndPositions.
- * This method should be called when an inner node is found and to be moved
- * inside the circle.
- * @param node
- */
-CiSECircle.prototype.moveOnCircleNodeInside = function (node) {
+CiSECircle.prototype.setOnCircleNodeInner = function (node) {
 
     // Remove the node from on-circle nodes list and add it to in-circle
     // nodes list
@@ -798,7 +791,7 @@ CiSECircle.prototype.moveOnCircleNodeInside = function (node) {
 
     this.inCircleNodes.push(node);
 
-    // Re-adjust all order indexes of remaining on circle nodes.
+    // Re-adjust all order indices of remaining on circle nodes.
     for (var i = 0; i < this.onCircleNodes.length; i++) {
         var onCircleNode = this.onCircleNodes[i];
 
@@ -807,26 +800,36 @@ CiSECircle.prototype.moveOnCircleNodeInside = function (node) {
 
     // De-register extension
     node.setAsNonOnCircleNode();
+};
+/**
+ * This method removes given on-circle node from the circle and calls
+ * reCalculateCircleSizeAndRadius and  reCalculateNodeAnglesAndPositions.
+ * This method should be called when an inner node is found and to be moved
+ * inside the circle.
+ * @param node
+ */
+CiSECircle.prototype.moveOnCircleNodeInside = function (nodeList) {
 
     // calculateRadius
     this.reCalculateCircleSizeAndRadius();
 
     //calculateNodePositions
     this.reCalculateNodeAnglesAndPositions();
-
     var randomX = void 0,
         randomY = void 0;
+    for (var i = 0; i < nodeList.length; i++) {
 
-    if (this.getRadius() > node.getHalfTheDiagonal * 2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH * 2) {
-        do {
-            randomX = this.getRadius() * (Math.random() - 0.5);
-            randomY = this.getRadius() * (Math.random() - 0.5);
-        } while (Math.sqrt(randomX * randomX + randomY * randomY) >= this.getRadius() - node.getHalfTheDiagonal * 2);
-    } else {
-        randomX = 0;
-        randomY = 0;
+        if (this.getRadius() > nodeList[i].getHalfTheDiagonal * 2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH * 2) {
+            do {
+                randomX = this.getRadius() * (Math.random() - 0.5);
+                randomY = this.getRadius() * (Math.random() - 0.5);
+            } while (Math.sqrt(randomX * randomX + randomY * randomY) >= this.getRadius() - node.getHalfTheDiagonal * 2);
+        } else {
+            randomX = 0;
+            randomY = 0;
+        }
+        nodeList[i].setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
     }
-    node.setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
 };
 
 /**
@@ -834,13 +837,14 @@ CiSECircle.prototype.moveOnCircleNodeInside = function (node) {
  * to the sizes of the vertices and the node separation parameter.
  */
 CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
+
     var totalDiagonal = 0;
     var onCircleNodes = this.getOnCircleNodes();
 
     for (var i = 0; i < onCircleNodes.length; i++) {
-        var node = onCircleNodes[i];
+        var _node3 = onCircleNodes[i];
 
-        var temp = node.getWidth() * node.getWidth() + node.getHeight() * node.getHeight();
+        var temp = _node3.getWidth() * _node3.getWidth() + _node3.getHeight() * _node3.getHeight();
         totalDiagonal += Math.sqrt(temp);
     }
 
@@ -871,20 +875,20 @@ CiSECircle.prototype.reCalculateNodePositions = function () {
     var parentCenterY = this.getParent().getCenterY();
 
     for (var i = 0; i < inOrderCopy.length; i++) {
-        var node = inOrderCopy[i];
+        var _node4 = inOrderCopy[i];
         var angle = void 0;
 
         if (i === 0) {
-            angle = node.getOnCircleNodeExt().getAngle();
+            angle = _node4.getOnCircleNodeExt().getAngle();
         } else {
             var previousNode = inOrderCopy[i - 1];
             // => angle in radian = (2*PI)*(circular distance/(2*PI*r))
 
-            angle = previousNode.getOnCircleNodeExt().getAngle() + (node.getHalfTheDiagonal() + nodeSeparation + previousNode.getHalfTheDiagonal()) / this.radius;
+            angle = previousNode.getOnCircleNodeExt().getAngle() + (_node4.getHalfTheDiagonal() + nodeSeparation + previousNode.getHalfTheDiagonal()) / this.radius;
         }
 
-        node.getOnCircleNodeExt().setAngle(angle);
-        node.setCenter(parentCenterX + this.radius * Math.cos(angle), parentCenterY + this.radius * Math.sin(angle));
+        _node4.getOnCircleNodeExt().setAngle(angle);
+        _node4.setCenter(parentCenterX + this.radius * Math.cos(angle), parentCenterY + this.radius * Math.sin(angle));
     }
 };
 /**
@@ -906,7 +910,7 @@ CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
     var parentCenterY = this.getParent().getCenterY();
 
     for (var i = 0; i < inOrderCopy.length; i++) {
-        var node = inOrderCopy[i];
+        var _node5 = inOrderCopy[i];
         var angle = void 0;
 
         if (i === 0) {
@@ -915,11 +919,11 @@ CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
             var previousNode = inOrderCopy[i - 1];
 
             // => angle in radian = (2*PI)*(circular distance/(2*PI*r))
-            angle = previousNode.getOnCircleNodeExt().getAngle() + (node.getHalfTheDiagonal() + nodeSeparation + previousNode.getHalfTheDiagonal()) / this.radius;
+            angle = previousNode.getOnCircleNodeExt().getAngle() + (_node5.getHalfTheDiagonal() + nodeSeparation + previousNode.getHalfTheDiagonal()) / this.radius;
         }
 
-        node.getOnCircleNodeExt().setAngle(angle);
-        node.setCenter(parentCenterX + this.radius * Math.cos(angle), parentCenterY + this.radius * Math.sin(angle));
+        _node5.getOnCircleNodeExt().setAngle(angle);
+        _node5.setCenter(parentCenterX + this.radius * Math.cos(angle), parentCenterY + this.radius * Math.sin(angle));
     }
 };
 
@@ -2144,12 +2148,11 @@ CiSELayout.prototype.calcTotalForces = function () {
 
 CiSELayout.prototype.moveNodes = function () {
     if (this.phase !== CiSELayout.PHASE_PERFORM_SWAP) {
-        var nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
 
+        var nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
         // Simply move all non-on-circle nodes.
         for (var i = 0; i < nonOnCircleNodes.length; i++) {
             nonOnCircleNodes[i].move();
-
             // Also make required rotations for circles
             if (nonOnCircleNodes[i].getChild() !== null && nonOnCircleNodes[i].getChild() !== undefined) {
                 nonOnCircleNodes[i].getChild().rotate();
@@ -2165,9 +2168,10 @@ CiSELayout.prototype.moveNodes = function () {
         for (var _i19 = 0; _i19 < inCircleNodes.length; _i19++) {
             inCircleNode = inCircleNodes[_i19];
             var parentNode = inCircleNode.getParent();
+
             var distanceFromCenter = Math.sqrt(Math.pow(inCircleNode.getCenterX() + inCircleNode.displacementX - parentNode.getCenterX(), 2) + Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(), 2)) + inCircleNode.getDiagonal();
 
-            if (distanceFromCenter >= parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 5) {
+            if (distanceFromCenter > parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 5) {
                 parentNode.getChild().setInnerNodePushCount(parentNode.getChild().getInnerNodePushCount() + distanceFromCenter - parentNode.getChild().getRadius());
 
                 var parentNodeOldCenterX = parentNode.getCenterX();
@@ -2176,16 +2180,15 @@ CiSELayout.prototype.moveNodes = function () {
                 if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 80 * parentNode.getChild().getOnCircleNodes().length) {
 
                     parentNode.getChild().setInnerNodePushCount(0);
-                    parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 0.5
-                    //(parentNode.getChild().getGraphManager().getLayout().getNodeSeparation())/40
-                    );
+                    parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 0.5);
                     parentNode.getChild().reCalculateCircleSizeAndRadius();
                     parentNode.getChild().reCalculateNodePositions();
+                    parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX, parentNodeOldCenterY);
 
-                    inCircleNode.displacementX = parentNode.getCenterX() - parentNodeOldCenterX;
-                    inCircleNode.displacementY = parentNode.getCenterY() - parentNodeOldCenterY;
+                    inCircleNode.displacementX = 0;
+                    inCircleNode.displacementY = 0;
                 } else {
-                    var hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(), inCircleNode.getCenterY(), inCircleNode.getCenterX() + inCircleNode.displacementX, inCircleNode.getCenterY() + inCircleNode.displacementY, parentNodeOldCenterX, parentNodeOldCenterY, parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 4 - inCircleNode.getDiagonal() + 1);
+                    var hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(), inCircleNode.getCenterY(), inCircleNode.getCenterX() + inCircleNode.displacementX, inCircleNode.getCenterY() + inCircleNode.displacementY, parentNodeOldCenterX, parentNodeOldCenterY, parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 5 - inCircleNode.getDiagonal() - 1);
 
                     if (hit !== null) {
                         if (hit[0] > 0) {
@@ -2444,19 +2447,20 @@ CiSELayout.prototype.findAndMoveInnerNodes = function () {
             // It is a user parameter, retrieve it.
             var maxInnerNodes = Math.floor(ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle);
 
-            if (ciseCircle.getOnCircleNodes().length >= 2) {
-                // Look for an inner node and move it inside
-                var innerNode = this.findInnerNode(ciseCircle);
+            // Look for an inner node and remove them from on-circle node list
+            var innerNode = this.findInnerNode(ciseCircle);
+            var innerNodeList = [];
 
-                while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes) {
-                    this.moveInnerNode(innerNode);
-                    innerNodeCount++;
+            while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes && ciseCircle.getOnCircleNodes().length > 2) {
+                innerNodeList.push(innerNode);
+                this.setInnerNode(innerNode);
+                innerNodeCount++;
 
-                    if (innerNodeCount < maxInnerNodes) {
-                        innerNode = this.findInnerNode(ciseCircle);
-                    }
+                if (innerNodeCount < maxInnerNodes) {
+                    innerNode = this.findInnerNode(ciseCircle);
                 }
             }
+            if (innerNodeList !== null && innerNodeList !== undefined && innerNodeList.length > 0) this.moveInnerNode(innerNodeList);
         }
     }
 };
@@ -2558,17 +2562,17 @@ CiSELayout.prototype.findInnerNode = function (ciseCircle) {
 };
 
 /**
- * This method safely removes inner node from circle perimeter (on-circle)
+ * This method safely removes inner nodes from circle perimeter (on-circle)
  * and moves them inside their owner circles (as in-circle nodes)
  */
-CiSELayout.prototype.moveInnerNode = function (innerNode) {
+CiSELayout.prototype.setInnerNode = function (innerNode) {
+
+    // We need to remove the inner nodes from on-circle nodes list
+    // of the owner circle
     var ciseCircle = innerNode.getOwner();
+    ciseCircle.setOnCircleNodeInner(innerNode);
 
-    // Remove the node from the circle first. This forces circle to
-    // re-adjust its geometry. A costly operation indeed...
-    ciseCircle.moveOnCircleNodeInside(innerNode);
-
-    // We need to also remove the inner node from on-circle nodes list
+    // We also need to remove the inner nodes from on-circle nodes list
     // of the associated graph manager
     var onCircleNodesList = this.graphManager.getOnCircleNodes();
     var index = onCircleNodesList.indexOf(innerNode);
@@ -2577,6 +2581,14 @@ CiSELayout.prototype.moveInnerNode = function (innerNode) {
     }
 
     this.graphManager.inCircleNodes.push(innerNode);
+};
+
+/**
+ * This method moves the selected nodes inside of the circle.
+ */
+CiSELayout.prototype.moveInnerNode = function (innerNodeList) {
+    var ciseCircle = innerNodeList[0].getOwner();
+    ciseCircle.moveOnCircleNodeInside(innerNodeList);
 };
 
 /**
@@ -2819,6 +2831,20 @@ CiSENode.prototype.move = function () {
 
     if (this.getChild() !== null && this.getChild() !== undefined) {
         this.getChild().updateBounds(true);
+    }
+};
+
+CiSENode.prototype.reflectCenterChangeToChildren = function (oldX, oldY) {
+
+    if (this.getChild() !== null && this.getChild() !== undefined) {
+        var innCircleNodes = this.getChild().getInCircleNodes();
+        var centerX = this.getCenterX();
+        var centerY = this.getCenterY();
+
+        for (var i = 0; i < innCircleNodes.length; i++) {
+            var node = innCircleNodes[i];
+            node.moveBy(centerX - oldX, centerY - oldY);
+        }
     }
 };
 

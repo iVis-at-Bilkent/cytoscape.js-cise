@@ -926,13 +926,12 @@ CiSELayout.prototype.calcTotalForces = function(){
 CiSELayout.prototype.moveNodes = function(){
     if (this.phase !== CiSELayout.PHASE_PERFORM_SWAP)
     {
-        let nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
 
+        let nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
         // Simply move all non-on-circle nodes.
         for (let i = 0; i < nonOnCircleNodes.length; i++)
         {
             nonOnCircleNodes[i].move();
-
             // Also make required rotations for circles
             if (nonOnCircleNodes[i].getChild() !== null && nonOnCircleNodes[i].getChild() !== undefined )
             {
@@ -950,10 +949,11 @@ CiSELayout.prototype.moveNodes = function(){
         {
             inCircleNode = inCircleNodes[i];
             let parentNode = inCircleNode.getParent();
+            
             let distanceFromCenter = Math.sqrt(Math.pow(inCircleNode.getCenterX() + inCircleNode.displacementX - parentNode.getCenterX(),2)  +
-                Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(),2)) + inCircleNode.getDiagonal() ;
+                Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(),2)) + inCircleNode.getDiagonal();
 
-            if (distanceFromCenter >= parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/5)
+            if (distanceFromCenter > parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/5)
             {
                 parentNode.getChild().setInnerNodePushCount( parentNode.getChild().getInnerNodePushCount() 
                     + distanceFromCenter - parentNode.getChild().getRadius());
@@ -968,25 +968,25 @@ CiSELayout.prototype.moveNodes = function(){
                     parentNode.getChild().setInnerNodePushCount(0);
                     parentNode.getChild().setAdditionalNodeSeparation(
                         parentNode.getChild().getAdditionalNodeSeparation() + 0.5
-                        //(parentNode.getChild().getGraphManager().getLayout().getNodeSeparation())/40
                         );
                     parentNode.getChild().reCalculateCircleSizeAndRadius();
                     parentNode.getChild().reCalculateNodePositions();
+                    parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX,parentNodeOldCenterY);
                     
-                    inCircleNode.displacementX = parentNode.getCenterX() - parentNodeOldCenterX;
-                    inCircleNode.displacementY = parentNode.getCenterY() - parentNodeOldCenterY;
+                    inCircleNode.displacementX = 0;
+                    inCircleNode.displacementY = 0;
                 }
                 else 
                 {
                     let hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(),inCircleNode.getCenterY(),
                     inCircleNode.getCenterX()+inCircleNode.displacementX,inCircleNode.getCenterY()+inCircleNode.displacementY,
                     parentNodeOldCenterX,parentNodeOldCenterY,
-                    parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/4 - inCircleNode.getDiagonal() + 1); 
+                    parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/5 - inCircleNode.getDiagonal() - 1); 
 
                         if(hit !== null){
                             if(hit[0] > 0)
                             {
-                                let displacementLength = Math.sqrt(Math.pow(inCircleNode.displacementX,2)+Math.pow(inCircleNode.displacementY,2))
+                                let displacementLength = Math.sqrt(Math.pow(inCircleNode.displacementX,2)+Math.pow(inCircleNode.displacementY,2));
                                 inCircleNode.displacementX = hit[0] * (inCircleNode.displacementX ) - (inCircleNode.displacementX/displacementLength);
                                 inCircleNode.displacementY = hit[0] * (inCircleNode.displacementY ) - (inCircleNode.displacementY/displacementLength);
                             }
@@ -1275,23 +1275,24 @@ CiSELayout.prototype.findAndMoveInnerNodes = function (){
         {
             // It is a user parameter, retrieve it.
             let maxInnerNodes = Math.floor(ciseCircle.getNodes().length * this.maxRatioOfNodesInsideCircle);
-            
-            if(ciseCircle.getOnCircleNodes().length >= 2){
-                // Look for an inner node and move it inside
-                let innerNode = this.findInnerNode(ciseCircle);
 
+            // Look for an inner node and remove them from on-circle node list
+            let innerNode = this.findInnerNode(ciseCircle);
+            let innerNodeList = [];
 
-                while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes)
+            while (innerNode !== null && innerNode !== undefined && innerNodeCount < maxInnerNodes && ciseCircle.getOnCircleNodes().length > 2)
+            {
+                innerNodeList.push(innerNode);
+                this.setInnerNode(innerNode);
+                innerNodeCount++;
+
+                if (innerNodeCount < maxInnerNodes)
                 {
-                    this.moveInnerNode(innerNode);
-                    innerNodeCount++;
-
-                    if (innerNodeCount < maxInnerNodes)
-                    {
-                        innerNode = this.findInnerNode(ciseCircle);
-                    }
+                    innerNode = this.findInnerNode(ciseCircle);
                 }
             }
+            if(innerNodeList !== null && innerNodeList !== undefined && innerNodeList.length > 0)
+                this.moveInnerNode(innerNodeList);
         }
     }
 };
@@ -1402,25 +1403,36 @@ CiSELayout.prototype.findInnerNode = function (ciseCircle){
 
 /**
  * This method safely removes inner node from circle perimeter (on-circle)
- * and moves them inside their owner circles (as in-circle nodes)
+ * and puts the node to their owner circles' inner circle node list
+ * However, this method does not move them physically
  */
-CiSELayout.prototype.moveInnerNode = function (innerNode)
+CiSELayout.prototype.setInnerNode = function (innerNode)
 {
-    let ciseCircle = innerNode.getOwner();
 
-    // Remove the node from the circle first. This forces circle to
-    // re-adjust its geometry. A costly operation indeed...
-    ciseCircle.moveOnCircleNodeInside(innerNode);
+    // We need to remove the inner nodes from on-circle nodes list
+    // of the owner circle
+    let ciseCircle = innerNode.getOwner(); 
+    ciseCircle.setOnCircleNodeInner(innerNode);
 
-    // We need to also remove the inner node from on-circle nodes list
+    // We also need to remove the inner nodes from on-circle nodes list
     // of the associated graph manager
     let onCircleNodesList = this.graphManager.getOnCircleNodes();
     let index = onCircleNodesList.indexOf(innerNode);
     if( index > -1){
         onCircleNodesList.splice(index, 1);
     }
-
+    //And put them into inner circle list
     this.graphManager.inCircleNodes.push(innerNode);
+};
+
+/**
+ * This method moves the already selected nodes (which are in the innerNodeList)
+ * inside of the circle.
+ */
+CiSELayout.prototype.moveInnerNode = function (innerNodeList)
+{
+    let ciseCircle = innerNodeList[0].getOwner();  
+    ciseCircle.moveOnCircleNodeInside(innerNodeList);
 };
 
 /**
