@@ -663,7 +663,7 @@ CiSECircle.prototype.setOnCircleNodeInner = function(node) {
 }
 /**
  * This method calls reCalculateCircleSizeAndRadius and  
- * reCalculateNodeAnglesAndPositions and puts the innerNodes.
+ * reCalculateNodeAnglesAndPositions and moves the innernodes inside the circle.
  * This method should be called when an inner node is found and to be moved
  * inside the circle.
  * @param {Object[]} nodeList - array of nodes that are to be moved inside the circle
@@ -678,17 +678,12 @@ CiSECircle.prototype.moveOnCircleNodeInside = function(nodeList) {
     let randomX,randomY;
     for(let i = 0; i<nodeList.length;i++){
 
-        if(this.getRadius() > nodeList[i].getHalfTheDiagonal*2 + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH*2){
-            do{
-                randomX = this.getRadius() * (Math.random() - 0.5);
-                randomY = this.getRadius() * (Math.random() - 0.5);
-            }while(Math.sqrt(randomX*randomX+randomY*randomY) >= (this.getRadius() - node.getHalfTheDiagonal*2));
-        }
-        else{
-            randomX = 0;
-            randomY = 0; 
-        }
-        nodeList[i].setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
+        let node = nodeList[i];
+
+        randomX = (Math.random() - 0.5)/10;
+        randomY = (Math.random() - 0.5)/10; 
+
+        node.setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
     }
 };
 

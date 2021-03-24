@@ -947,9 +947,10 @@ CiSELayout.prototype.moveNodes = function(){
 
         for (let i = 0; i < inCircleNodes.length; i++)
         {
+            
             inCircleNode = inCircleNodes[i];
             let parentNode = inCircleNode.getParent();
-            
+
             let distanceFromCenter = Math.sqrt(Math.pow(inCircleNode.getCenterX() + inCircleNode.displacementX - parentNode.getCenterX(),2)  +
                 Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(),2)) + inCircleNode.getDiagonal();
 
@@ -967,8 +968,7 @@ CiSELayout.prototype.moveNodes = function(){
 
                     parentNode.getChild().setInnerNodePushCount(0);
                     parentNode.getChild().setAdditionalNodeSeparation(
-                        parentNode.getChild().getAdditionalNodeSeparation() + 0.5
-                        );
+                       parentNode.getChild().getAdditionalNodeSeparation() + 0.5);
                     parentNode.getChild().reCalculateCircleSizeAndRadius();
                     parentNode.getChild().reCalculateNodePositions();
                     parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX,parentNodeOldCenterY);
@@ -981,7 +981,7 @@ CiSELayout.prototype.moveNodes = function(){
                     let hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(),inCircleNode.getCenterY(),
                     inCircleNode.getCenterX()+inCircleNode.displacementX,inCircleNode.getCenterY()+inCircleNode.displacementY,
                     parentNodeOldCenterX,parentNodeOldCenterY,
-                    parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/5 - inCircleNode.getDiagonal() - 1); 
+                    parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH/5 - inCircleNode.getDiagonal()); 
 
                         if(hit !== null){
                             if(hit[0] > 0)
@@ -997,8 +997,8 @@ CiSELayout.prototype.moveNodes = function(){
                         }
                         else
                         {
-                            inCircleNode.displacementX = parentNode.getCenterX() - parentNodeOldCenterX;
-                            inCircleNode.displacementY = parentNode.getCenterY() - parentNodeOldCenterY;
+                            inCircleNode.displacementX = 0;
+                            inCircleNode.displacementY = 0;
                         }
                     
                 }
