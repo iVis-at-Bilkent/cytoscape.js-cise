@@ -191,6 +191,23 @@ CiSENode.prototype.reflectCenterChangeToChildren = function (oldX,oldY) {
 }
 
 /**
+ * This method moves this inner node as a result of the computations at the end of
+ * this iteration. However, as the displacement can be limited because of the inner boundaries,
+ * to let layout continue, unabated displacement is reflected to layout's total displacement.
+ */
+CiSENode.prototype.innerMove = function (displacementRequestX, displacementRequestY) {
+    let layout = this.getOwner().getGraphManager().getLayout();
+
+    this.displacementX = this.getLimitedDisplacement(this.displacementX);
+    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+
+    this.moveBy(this.displacementX, this.displacementY);
+    layout.totalDisplacement += Math.abs(this.getLimitedDisplacement(displacementRequestX)) 
+                                + Math.abs(this.getLimitedDisplacement(displacementRequestY));
+
+};
+
+/**
  * This method resets displacement values
  */
 CiSENode.prototype.reset = function()

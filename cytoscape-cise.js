@@ -2080,22 +2080,23 @@ CiSELayout.prototype.calcRepulsionForces = function () {
  */
 CiSELayout.prototype.calcGravitationalForces = function () {
     if (!this.graphManager.rootGraph.isConnected) {
-        var _lNodes = this.graphManager.getNonOnCircleNodes();
+        var lNodes = this.graphManager.getNonOnCircleNodes();
 
-        for (var i = 0; i < _lNodes.length; i++) {
-            var node = _lNodes[i];
+        for (var i = 0; i < lNodes.length; i++) {
+            var node = lNodes[i];
             this.calcGravitationalForce(node);
         }
     }
 
     // Calculate gravitational forces to keep in-circle nodes in the center
     // TODO: is this really helping or necessary?
-    var lNodes = this.graphManager.getInCircleNodes();
+    // let lNodes = this.graphManager.getInCircleNodes();
 
-    for (var _i17 = 0; _i17 < lNodes.length; _i17++) {
-        var _node = lNodes[_i17];
-        this.calcGravitationalForce(_node);
-    }
+    // for (let i = 0; i < lNodes.length; i++)
+    // {
+    //     let node = lNodes[i];
+    //     this.calcGravitationalForce(node);
+    // }
 };
 
 /**
@@ -2125,22 +2126,22 @@ CiSELayout.prototype.calcTotalForces = function () {
     }
 
     var onCircleNodes = this.graphManager.getOnCircleNodes();
-    for (var _i18 = 0; _i18 < onCircleNodes.length; _i18++) {
-        var _node2 = onCircleNodes[_i18];
-        var parentNode = _node2.getOwner().getParent();
-        var values = _node2.getOwner().decomposeForce(_node2);
+    for (var _i17 = 0; _i17 < onCircleNodes.length; _i17++) {
+        var _node = onCircleNodes[_i17];
+        var parentNode = _node.getOwner().getParent();
+        var values = _node.getOwner().decomposeForce(_node);
 
         if (this.phase === CiSELayout.PHASE_SWAP_PREPERATION) {
-            _node2.getOnCircleNodeExt().addDisplacementForSwap(values.getRotationAmount());
+            _node.getOnCircleNodeExt().addDisplacementForSwap(values.getRotationAmount());
         }
 
         parentNode.displacementX += values.getDisplacementX();
         parentNode.displacementY += values.getDisplacementY();
-        _node2.displacementX = 0.0;
-        _node2.displacementY = 0.0;
+        _node.displacementX = 0.0;
+        _node.displacementY = 0.0;
 
         parentNode.rotationAmount += values.getRotationAmount();
-        _node2.rotationAmount = 0.0;
+        _node.rotationAmount = 0.0;
     }
 };
 
@@ -2169,10 +2170,13 @@ CiSELayout.prototype.moveNodes = function () {
         var inCircleNodes = this.graphManager.getInCircleNodes();
         var inCircleNode = void 0;
 
-        for (var _i19 = 0; _i19 < inCircleNodes.length; _i19++) {
+        for (var _i18 = 0; _i18 < inCircleNodes.length; _i18++) {
 
-            inCircleNode = inCircleNodes[_i19];
+            inCircleNode = inCircleNodes[_i18];
             var parentNode = inCircleNode.getParent();
+
+            var initialDisplacementX = inCircleNode.displacementX;
+            var initialDisplacementY = inCircleNode.displacementY;
 
             var distanceFromCenter = Math.sqrt(Math.pow(inCircleNode.getCenterX() + inCircleNode.displacementX - parentNode.getCenterX(), 2) + Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(), 2)) + inCircleNode.getDiagonal();
 
@@ -2182,10 +2186,10 @@ CiSELayout.prototype.moveNodes = function () {
                 var parentNodeOldCenterX = parentNode.getCenterX();
                 var parentNodeOldCenterY = parentNode.getCenterY();
 
-                if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 80 * parentNode.getChild().getOnCircleNodes().length) {
+                if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 450 * parentNode.getChild().getOnCircleNodes().length) {
 
                     parentNode.getChild().setInnerNodePushCount(0);
-                    parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 0.5);
+                    parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 3);
                     parentNode.getChild().reCalculateCircleSizeAndRadius();
                     parentNode.getChild().reCalculateNodePositions();
                     parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX, parentNodeOldCenterY);
@@ -2211,7 +2215,7 @@ CiSELayout.prototype.moveNodes = function () {
                 }
             }
 
-            inCircleNode.move();
+            inCircleNode.innerMove(initialDisplacementX, initialDisplacementY);
         }
     } else {
         // If in perform-swap phase of step 4, we have to look for swappings
@@ -2245,8 +2249,8 @@ CiSELayout.prototype.moveNodes = function () {
         var inSameDirection = void 0;
 
         // Check each node with its next node for swapping
-        for (var _i20 = 0; _i20 < size; _i20++) {
-            firstNode = ciseOnCircleNodes[_i20];
+        for (var _i19 = 0; _i19 < size; _i19++) {
+            firstNode = ciseOnCircleNodes[_i19];
             secondNode = firstNode.getOnCircleNodeExt().getNextNode();
             firstNodeExt = firstNode.getOnCircleNodeExt();
             secondNodeExt = secondNode.getOnCircleNodeExt();
@@ -2339,8 +2343,8 @@ CiSELayout.prototype.moveNodes = function () {
         }
 
         // Now process all safe pairs
-        for (var _i21 = 0; _i21 < safePairs.length; _i21++) {
-            var safePair = safePairs[_i21];
+        for (var _i20 = 0; _i20 < safePairs.length; _i20++) {
+            var safePair = safePairs[_i20];
 
             // Check if discrepancy is above the threshold (enough to swap)
             if (safePair.inSameDirection() || safePair.getDiscrepancy() < CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP) {
@@ -2366,15 +2370,15 @@ CiSELayout.prototype.moveNodes = function () {
 
         // Update swap history
         this.swappedPairsInLastIteration = [];
-        for (var _i22 = 0; _i22 < swappedPairs.length; _i22++) {
-            this.swappedPairsInLastIteration.push(swappedPairs[_i22]);
+        for (var _i21 = 0; _i21 < swappedPairs.length; _i21++) {
+            this.swappedPairsInLastIteration.push(swappedPairs[_i21]);
         }
 
         // Reset all discrepancy values of on circle nodes.
         var node = void 0;
 
-        for (var _i23 = 0; _i23 < size; _i23++) {
-            node = ciseOnCircleNodes[_i23];
+        for (var _i22 = 0; _i22 < size; _i22++) {
+            node = ciseOnCircleNodes[_i22];
             node.getOnCircleNodeExt().setDisplacementForSwap(0.0);
         }
     }
@@ -2505,8 +2509,8 @@ CiSELayout.prototype.findInnerNode = function (ciseCircle) {
 
         var connectedToNonImmediate = false;
 
-        for (var _i24 = 0; _i24 < circleSegment.length; _i24++) {
-            var spanningNode = circleSegment[_i24];
+        for (var _i23 = 0; _i23 < circleSegment.length; _i23++) {
+            var spanningNode = circleSegment[_i23];
 
             // Performance improvement: stop iteration if this cannot be
             // an inner node.
@@ -2861,6 +2865,21 @@ CiSENode.prototype.reflectCenterChangeToChildren = function (oldX, oldY) {
             node.moveBy(centerX - oldX, centerY - oldY);
         }
     }
+};
+
+/**
+ * This method moves this inner node as a result of the computations at the end of
+ * this iteration. However, as the displacement can be limited because of the inner boundaries,
+ * to let layout continue, unabated displacement is reflected to layout's total displacement.
+ */
+CiSENode.prototype.innerMove = function (displacementRequestX, displacementRequestY) {
+    var layout = this.getOwner().getGraphManager().getLayout();
+
+    this.displacementX = this.getLimitedDisplacement(this.displacementX);
+    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+
+    this.moveBy(this.displacementX, this.displacementY);
+    layout.totalDisplacement += Math.abs(this.getLimitedDisplacement(displacementRequestX)) + Math.abs(this.getLimitedDisplacement(displacementRequestY));
 };
 
 /**

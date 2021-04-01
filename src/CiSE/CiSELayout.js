@@ -861,13 +861,13 @@ CiSELayout.prototype.calcGravitationalForces = function () {
 
     // Calculate gravitational forces to keep in-circle nodes in the center
     // TODO: is this really helping or necessary?
-    let lNodes = this.graphManager.getInCircleNodes();
+    // let lNodes = this.graphManager.getInCircleNodes();
 
-    for (let i = 0; i < lNodes.length; i++)
-    {
-        let node = lNodes[i];
-        this.calcGravitationalForce(node);
-    }
+    // for (let i = 0; i < lNodes.length; i++)
+    // {
+    //     let node = lNodes[i];
+    //     this.calcGravitationalForce(node);
+    // }
 };
 
 /**
@@ -951,6 +951,9 @@ CiSELayout.prototype.moveNodes = function(){
             inCircleNode = inCircleNodes[i];
             let parentNode = inCircleNode.getParent();
 
+            let initialDisplacementX = inCircleNode.displacementX;
+            let initialDisplacementY = inCircleNode.displacementY;
+
             let distanceFromCenter = Math.sqrt(Math.pow(inCircleNode.getCenterX() + inCircleNode.displacementX - parentNode.getCenterX(),2)  +
                 Math.pow(inCircleNode.getCenterY() + inCircleNode.displacementY - parentNode.getCenterY(),2)) + inCircleNode.getDiagonal();
 
@@ -963,12 +966,12 @@ CiSELayout.prototype.moveNodes = function(){
                 let parentNodeOldCenterY = parentNode.getCenterY();
                 
                 if(parentNode.getChild().getInnerNodePushCount()/(parentNode.getChild().getInCircleNodes().length)
-                 > 80*parentNode.getChild().getOnCircleNodes().length)
+                 > 450*parentNode.getChild().getOnCircleNodes().length)
                 {
 
                     parentNode.getChild().setInnerNodePushCount(0);
                     parentNode.getChild().setAdditionalNodeSeparation(
-                       parentNode.getChild().getAdditionalNodeSeparation() + 0.5);
+                       parentNode.getChild().getAdditionalNodeSeparation() + 3);
                     parentNode.getChild().reCalculateCircleSizeAndRadius();
                     parentNode.getChild().reCalculateNodePositions();
                     parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX,parentNodeOldCenterY);
@@ -1004,7 +1007,7 @@ CiSELayout.prototype.moveNodes = function(){
                 }
             }
 
-            inCircleNode.move();
+            inCircleNode.innerMove(initialDisplacementX,initialDisplacementY);
         }
 
     } else {
