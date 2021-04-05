@@ -189,13 +189,12 @@
       contents = event.target.result;
 
       // Update Cytoscape
-      window.cy.startBatch();
       window.cy.style().clear();
       window.cy.remove('nodes');
       window.cy.remove('edges');
       window.cy.graphml({ layoutBy: "circle" });
       window.cy.graphml(contents);
-      arrayOfClusterArrays = [];
+      
       if(markovClusteringApplied.checked){
         var clusters = window.cy.elements().markovClustering({expandFactor: 3});
         for(var i = 0; i<clusters.length; i++){
@@ -205,61 +204,58 @@
         }
       }
 
-      let clusterColors = [];
-      let uniqueClusterIDs = [];
+      let clusterColorsTemp = {};
+      let uniqueClusterIDs = {};
+      let uniqueClusterNum = 0;
 
       window.cy.nodes().forEach(function (node) {
         let clusterID = node.data('clusterID');
-        if (uniqueClusterIDs.includes(clusterID)) {
-          if(arrayOfClusterArrays[clusterID] == undefined){
-            arrayOfClusterArrays[clusterID] = [];
-          }
-          else{
-            arrayOfClusterArrays[clusterID].push(node.data('id'));
-          }
+        if (clusterID in uniqueClusterIDs) {
+          uniqueClusterIDs[clusterID].push(node.data("id"));
         } 
         else {
-          uniqueClusterIDs.push(clusterID);
-          var r=0;
-          var g=0;
-          var b=0;
-          var factor = 1/4;
-          if(uniqueClusterIDs.length > arrayOfColors.length){
-            var num = uniqueClusterIDs.length - arrayOfColors.length -1;
-            if(num >= arrayOfColors.length){
-              num = num % arrayOfColors.length;
-              factor = 1/8;
-            }
-            r = parseInt(arrayOfColors[num][0] * (1 - factor));
-            g = parseInt(arrayOfColors[num][1] * (1 - factor));
-            b = parseInt(arrayOfColors[num][2] * (1 - factor));
-          }
-          else{
-            r = arrayOfColors[uniqueClusterIDs.length-1][0];
-            g = arrayOfColors[uniqueClusterIDs.length-1][1];
-            b = arrayOfColors[uniqueClusterIDs.length-1][2];
-          }
-          let rgbColor = '#' + fullColorHex(r, g, b);
-          clusterColors.push(rgbColor);
-          arrayOfClusterArrays.push([node.data('id')]);
+          uniqueClusterNum += 1;
+          uniqueClusterIDs[clusterID] = [node.data("id")];
+          var r=Math.floor(Math.random() * Math.floor(255));
+          var g=Math.floor(Math.random() * Math.floor(255));
+          var b=Math.floor(Math.random() * Math.floor(255));
+          let rgbColor = '#'+ fullColorHex(r,g,b);
+          //node._private.data.color = r+" "+g+" "+b;
+          clusterColorsTemp[clusterID] = rgbColor;
         }
       });
 
-      window.cy.endBatch();
+
+      arrayOfClusterArrays = new Array(uniqueClusterNum);
+
+      let maxClusterID = Math.max.apply(null,Object.keys(uniqueClusterIDs));
+      count = 0;
+      for(let i = 0; i<= maxClusterID; i++){
+        if(!(i in uniqueClusterIDs))
+          count += 1;
+        else{
+          arrayOfClusterArrays[i-count] = uniqueClusterIDs[i];
+          clusterColors[i-count] = clusterColorsTemp[i];
+          let selector =  '[clusterID = ' + i +']';
+          window.cy.nodes(selector).forEach(function (node){
+            node.data("clusterID",i-count);
+          });
+        }
+      }
 
       window.cy.style()
       .selector('node:selected').style({
         'border-color': '#00FF00',
         'border-width': '4px',
       })
-
         .selector('node').style({
           'content': 'data(id)',
           'background-color': function (ele) {
-            for (let i = 0; i < arrayOfClusterArrays.length; i++)
-              if (arrayOfClusterArrays[i].includes(ele.data('id')))
+            for (let i = 0; i < arrayOfClusterArrays.length; i++){
+              if (arrayOfClusterArrays[i].includes(ele.data("id"))){
                 return clusterColors[i];
-
+              }
+            }
             return '#756D76';
           },
           'width': 'data(width)',
@@ -277,14 +273,13 @@
             let source = ele.source();
             let target = ele.target();
             for (let i = 0; i < arrayOfClusterArrays.length; i++)
-              if (arrayOfClusterArrays[i].includes(source.data('id')) &&
-                arrayOfClusterArrays[i].includes(target.data('id')))
+              if (arrayOfClusterArrays[i].includes(source.data("id")) &&
+                arrayOfClusterArrays[i].includes(target.data("id")))
                 return clusterColors[i];
 
             return '#756D76';
           }
         })
-
         .update();
 
       // Update Legend----
@@ -448,116 +443,107 @@
         }
         
         instance1.highlight(collection);
-        
-        if(exported){
-          arrayOfClusterArrays = [];
-          if(markovClusteringApplied.checked){
-            var clusters = window.cy.elements().markovClustering({expandFactor: 3});
-            for(var i = 0; i<clusters.length; i++){
-              for(var j = 0; j<clusters[i].length; j++){
-                clusters[i][j]._private.data.clusterID = i;
-              }
+
+        arrayOfClusterArrays = [[]];
+        let colorMapping ={};
+        window.cy.nodes().forEach(function (node) {
+          let clusterID = node.data('clusterID');
+          if (typeof clusterID !== 'number')
+            clusterID = Number(clusterID);
+          if(!(clusterID in colorMapping ) && !(Object.values(colorMapping).includes(node.style('background-color')))){
+            colorMapping[clusterID] = node.style('background-color');
+          }
+        });
+        if(markovClusteringApplied.checked){
+          var clusters = window.cy.elements().markovClustering({expandFactor: 3});
+          for(var i = 0; i<clusters.length; i++){
+            for(var j = 0; j<clusters[i].length; j++){
+              clusters[i][j]._private.data.clusterID = i;
             }
           }
-          
-          let clusterColors = [];
-          let uniqueClusterIDs = [];
+        }
+        
 
-          window.cy.nodes().forEach(function (node) {
-            let clusterID = node.data('clusterID');
-            if (uniqueClusterIDs.includes(clusterID)) {
-              if(arrayOfClusterArrays[clusterID] == undefined){
-                arrayOfClusterArrays[clusterID] = [];
-              }
-              else{
-                arrayOfClusterArrays[clusterID].push(node.data('id'));
-              }
-            } 
-            else {
-              uniqueClusterIDs.push(clusterID);
-              var r=0;
-              var g=0;
-              var b=0;
-              var factor = 1/4;
-              
-              if(uniqueClusterIDs.length > arrayOfColors.length){
-                var num = uniqueClusterIDs.length - arrayOfColors.length -1;
-                //num = num % (arrayOfColors.length-1);
-                if(num >= arrayOfColors.length){
-                  num = num % (arrayOfColors.length-1);
-                  factor = 1/8;
-                }
-                r = parseInt(arrayOfColors[num][0] * (1 - factor));
-                g = parseInt(arrayOfColors[num][1] * (1 - factor));
-                b = parseInt(arrayOfColors[num][2] * (1 - factor));
-              }
-              else{
-                r = arrayOfColors[uniqueClusterIDs.length-1][0];
-                g = arrayOfColors[uniqueClusterIDs.length-1][1];
-                b = arrayOfColors[uniqueClusterIDs.length-1][2];
-              }
-              let rgbColor = '#' + fullColorHex(r, g, b);
-              clusterColors.push(rgbColor);
-              arrayOfClusterArrays.push([node.data('id')]);
-            }
-          });
-          window.cy.style()
+        window.cy.nodes().forEach(function (node) {
+
+          let clusterID = node.data('clusterID');
+          if (typeof clusterID !== 'number')
+            clusterID = Number(clusterID);
+          
+          while(arrayOfClusterArrays.length <= clusterID){
+            arrayOfClusterArrays.push([]);
+          }
+          
+          arrayOfClusterArrays[clusterID].push(node.data("id"));
+
+        });
+
+        clusterColors = new Array(arrayOfClusterArrays.length);
+
+        for(let i = 0; i < arrayOfClusterArrays.length; i++){
+          if(i in colorMapping)
+            clusterColors[i] = colorMapping[i];
+          else{
+            var r=Math.floor(Math.random() * Math.floor(255));
+            var g=Math.floor(Math.random() * Math.floor(255));
+            var b=Math.floor(Math.random() * Math.floor(255));
+            let rgbColor = '#'+ fullColorHex(r,g,b);
+            clusterColors[i] = rgbColor;
+          }
+        }
+
+        window.cy.style()
           .selector('node:selected').style({
             'border-color': '#00FF00',
             'border-width': '4px',
           })
-
             .selector('node').style({
               'content': 'data(id)',
               'background-color': function (ele) {
-                for (let i = 0; i < arrayOfClusterArrays.length; i++)
-                  if (arrayOfClusterArrays[i] != undefined && arrayOfClusterArrays[i].includes(ele.data('id'))){
-                    if(clusterColors[i] != undefined)
-                      return clusterColors[i];
-                    else return '#756D76';
+                for (let i = 0; i < arrayOfClusterArrays.length; i++){
+                  if (typeof arrayOfClusterArrays[i] !== undefined && arrayOfClusterArrays[i].includes(ele.data("id"))){
+                    return clusterColors[i];
                   }
-                    
-
-                return '#756D76';
+                }
+                return ele.style('background-color');
               },
             })
-            .selector('edge').style({
-              'curve-style': 'bezier',
-              'width': 5,
-              'opacity': 0.65,
-              'line-color': function (ele) {
-                let source = ele.source();
-                let target = ele.target();
-                for (let i = 0; i < arrayOfClusterArrays.length; i++)
-                  if (arrayOfClusterArrays[i] != undefined && arrayOfClusterArrays[i].includes(source.data('id')) &&
-                    arrayOfClusterArrays[i].includes(target.data('id')))
-                    return clusterColors[i];
+              .selector('edge').style({
+                'curve-style': 'bezier',
+                'width': 5,
+                'opacity': 0.65,
+                'line-color': function (ele) {
+                  let source = ele.source();
+                  let target = ele.target();
+                  for (let i = 0; i < arrayOfClusterArrays.length; i++)
+                    if (typeof arrayOfClusterArrays[i] !== undefined && arrayOfClusterArrays[i].includes(source.data("id")) &&
+                      arrayOfClusterArrays[i].includes(target.data("id")))
+                      return clusterColors[i];
+                  return '#756D76';
+                }
+              }).update();
+            
 
-                return '#756D76';
-              }
-            })
-            .update();
-
-          // Update Legend----
-          // Clear Legend
-          let legend = document.getElementById('legend');
-          let child = legend.lastElementChild;
-          while (child && child.id !== "unclusteredLegend") {
-            legend.removeChild(child);
-            child = legend.lastElementChild;
-          }
-
-          // Repopulate Legend
-          for (let i = 0; i < clusterColors.length; i++) {
-            var li = document.createElement('li');
-            var el_span = document.createElement('span');
-            el_span.style.background = clusterColors[i];
-            let textnode = document.createTextNode("Cluster #: " + i);
-            li.appendChild(el_span);
-            li.appendChild(textnode);
-            document.getElementById('legend').appendChild(li);
-          }
+        // Update Legend----
+        // Clear Legend
+        let legend = document.getElementById('legend');
+        let child = legend.lastElementChild;
+        while (child && child.id !== "unclusteredLegend") {
+          legend.removeChild(child);
+          child = legend.lastElementChild;
         }
+
+        // Repopulate Legend
+        for (let i = 0; i < clusterColors.length; i++) {
+          var li = document.createElement('li');
+          var el_span = document.createElement('span');
+          el_span.style.background = clusterColors[i];
+          let textnode = document.createTextNode("Cluster #: " + i);
+          li.appendChild(el_span);
+          li.appendChild(textnode);
+          document.getElementById('legend').appendChild(li);
+        }
+        
       }
     });
 
@@ -594,80 +580,81 @@
   document.getElementById("addCluster").addEventListener("click", function () {
     if(window.cy.nodes(":selected").length == 0)
       return;
-    
 
-    let clusterColors = [];
-    let uniqueClusterIDs = [];
-    let colorMapping = [];
-    let tempArrayOfClusterArrays = new Array(arrayOfClusterArrays.length+1);
+    let clusterColorsTemp = {};
+    let uniqueClusterIDs = {};
+    let uniqueClusterNum = 0;
 
     window.cy.nodes(":unselected").forEach(function (node) {
 
       let clusterID = node.data('clusterID');
-      node.data('clusterID',clusterID.toString());
+      if (typeof clusterID !== 'number')
+        clusterID = Number(clusterID);
 
-      if(clusterID != -1){  
-        if (uniqueClusterIDs.includes(clusterID)) {
-          if (tempArrayOfClusterArrays[clusterID] === undefined){
-            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
-          }
-          else
-            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
+      if(clusterID != -1 && typeof clusterID === 'number'){  
+        if (clusterID in uniqueClusterIDs) {
+          uniqueClusterIDs[clusterID].push(node.data("id"));
         } 
         else {
-            colorMapping.push({clusterID:node.style('background-color')});
-            uniqueClusterIDs.push(clusterID);
-            clusterColors.push(node.style('background-color'));
-            
-          if(tempArrayOfClusterArrays[clusterID] != null)
-            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
-          else
-            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
+          uniqueClusterNum += 1;
+          uniqueClusterIDs[clusterID] = [node.data("id")];
+          clusterColorsTemp[clusterID] = node.style('background-color');
         }
       }
     });
-    arrayOfClusterArrays = tempArrayOfClusterArrays;
 
-    let newID = arrayOfClusterArrays.length;
+
+    arrayOfClusterArrays = new Array(uniqueClusterNum);
+    clusterColors = new Array(uniqueClusterNum);
+    let newID;
     var r=Math.floor(Math.random() * Math.floor(255));
     var g=Math.floor(Math.random() * Math.floor(255));
     var b=Math.floor(Math.random() * Math.floor(255));
-    let rgbColor = '#' + fullColorHex(r, g, b);
-    arrayOfClusterArrays.push([]);
-    uniqueClusterIDs.push(newID.toString());
-    clusterColors.push(rgbColor);
-    colorMapping.push({newID:rgbColor});
+    let rgbColor = '#'+ fullColorHex(r,g,b);
 
+    if(uniqueClusterNum != 0){
+      
+      let count = 0;
+      let maxClusterID = Math.max.apply(null,Object.keys(uniqueClusterIDs));
+      for(let i = 0; i<= maxClusterID; i++){
+        if(!(i in uniqueClusterIDs))
+          count += 1;
+        else{
+          arrayOfClusterArrays[i-count] = uniqueClusterIDs[i];
+          clusterColors[i-count] = clusterColorsTemp[i];
+          let selector =  '[clusterID = ' + i +']:unselected';
+          window.cy.nodes(selector).forEach(function (node){
+            node.data("clusterID",i-count);
+          });
+        }
+      }
+
+      newID = arrayOfClusterArrays.length;
+      arrayOfClusterArrays.push([]);
+      clusterColors.push(rgbColor);
+    }
+    else{
+
+      newID = 0;
+      arrayOfClusterArrays[newID] = [];
+      clusterColors = [rgbColor];
+    }
     window.cy.nodes(":selected").forEach(function (node){
-      node.style("background-color",rgbColor);
-      node.data("clusterID",newID.toString());
-      node._private.data.color = r+" "+g+" "+b;
-      arrayOfClusterArrays[newID].push(node.data("id"))
+      node.data("clusterID",newID);
+      arrayOfClusterArrays[newID].push(node.data("id"));
     });
 
-    let index = 0;
-    let tempArray = [];
-
-    for(let i = 0; i < arrayOfClusterArrays.length; i++){
-      if(arrayOfClusterArrays[i] == null){
-        uniqueClusterIDs.pop(i.toString());
-        index = index + 1;
-      }
-      else{
-        if(!uniqueClusterIDs.includes((i-index).toString()))
-          uniqueClusterIDs.push((i-index).toString());
-        tempArray.push([]);
-        let selector =  '[clusterID = \"' + i +'\"]';
-        window.cy.nodes(selector).forEach(function (node) {
-          node.data("clusterID", (i-index).toString());
-          tempArray[tempArray.length-1].push(node.data('id'));
-        });
-      }
-    }
-
-    arrayOfClusterArrays = tempArray;
-    
     window.cy.style()
+        .selector('node').style({
+          'content': 'data(id)',
+          'background-color': function (ele) {
+            for (let i = 0; i < arrayOfClusterArrays.length; i++)
+              if (arrayOfClusterArrays[i].includes(ele.data("id"))){
+                  return clusterColors[i];
+                }
+            return '#756D76';
+          },
+        })
         .selector('edge').style({
           'curve-style': 'bezier',
           'width': 5,
@@ -676,9 +663,9 @@
             let source = ele.source();
             let target = ele.target();
             for (let i = 0; i < arrayOfClusterArrays.length; i++)
-              if (arrayOfClusterArrays[i].includes(source.data('id')) &&
-              arrayOfClusterArrays[i].includes(target.data('id')))
-                return source.style("background-color");
+              if (arrayOfClusterArrays[i].includes(source.data("id")) &&
+              arrayOfClusterArrays[i].includes(target.data("id")))
+                return clusterColors[i];
 
             return '#756D76';
           }
@@ -711,61 +698,66 @@
   document.getElementById("removeCluster").addEventListener("click", function () {
     if(window.cy.nodes(":selected").length == 0)
       return;
-    let clusterColors = [];
-    let uniqueClusterIDs = [];
-    let tempArrayOfClusterArrays = new Array(arrayOfClusterArrays.length);
+
+    window.cy.nodes(":selected").forEach(function (node){
+      node.data("clusterID",-1);
+    });
+
+    let clusterColorsTemp = {};
+    let uniqueClusterIDs = {};
+    let uniqueClusterNum = 0;
 
     window.cy.nodes(":unselected").forEach(function (node) {
       let clusterID = node.data('clusterID');
-      if(clusterID != -1){
-        if (uniqueClusterIDs.includes(clusterID)) {
-          if (tempArrayOfClusterArrays[clusterID] === undefined){
-            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
-          }
-          else
-            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
+
+      if (typeof clusterID !== 'number')
+        clusterID = Number(clusterID);
+
+      if(clusterID != -1 && typeof clusterID === 'number'){  
+        if (clusterID in uniqueClusterIDs) {
+          uniqueClusterIDs[clusterID].push(node.data("id"));
         } 
         else {
-          uniqueClusterIDs.push(clusterID);
-          clusterColors.push(node.style('background-color'));
-          if(tempArrayOfClusterArrays[clusterID] != null)
-            tempArrayOfClusterArrays[clusterID].push(node.data("id"));
-          else
-            tempArrayOfClusterArrays[clusterID] = [node.data("id")];
+          uniqueClusterNum += 1;
+          uniqueClusterIDs[clusterID] = [node.data("id")];
+          clusterColorsTemp[clusterID] = node.style('background-color');
         }
       }
     });
 
-    arrayOfClusterArrays = tempArrayOfClusterArrays;
-
-    window.cy.nodes(":selected").forEach(function (node){
-      node.style("background-color","#756D76");
-      node.data("clusterID",(-1).toString());
-    });
-
-    let index = 0;
-    let tempArray = [];
-
-    for(let i = 0; i < arrayOfClusterArrays.length; i++){
-      if(arrayOfClusterArrays[i] == null){
-        uniqueClusterIDs.pop(i.toString());
-        index = index + 1;
-      }
-      else{
-        if(!uniqueClusterIDs.includes((i-index).toString()))
-          uniqueClusterIDs.push((i-index).toString());
-        tempArray.push([]);
-        let selector =  '[clusterID = \"' + i +'\"]';
-        window.cy.nodes(selector).forEach(function (node) {
-          node.data("clusterID", (i-index).toString());
-          tempArray[tempArray.length-1].push(node.data('id'));
-        });
+    let count = 0;
+    arrayOfClusterArrays = new Array(uniqueClusterNum);
+    clusterColors = new Array(uniqueClusterNum);
+    
+    
+    if(uniqueClusterNum != 0){
+      let maxClusterID = Math.max.apply(null,Object.keys(uniqueClusterIDs));
+      for(let i = 0; i<= maxClusterID; i++){
+        if(!(i in uniqueClusterIDs))
+          count += 1;
+        else{
+          arrayOfClusterArrays[i-count] = uniqueClusterIDs[i];
+          clusterColors[i-count] = clusterColorsTemp[i];
+          let selector =  '[clusterID = ' + i +']:unselected';
+          window.cy.nodes(selector).forEach(function (node){
+            node.data("clusterID",i-count);
+          });
+        }
       }
     }
-
-    arrayOfClusterArrays = tempArray;
     
     window.cy.style()
+        .selector('node').style({
+          'content': 'data(id)',
+          'background-color': function (ele) {
+            for (let i = 0; i < arrayOfClusterArrays.length; i++){
+              if (arrayOfClusterArrays[i].includes(ele.data("id"))){
+                return clusterColors[i];
+              }
+            }
+            return '#756D76';
+          },
+        })
         .selector('edge').style({
           'curve-style': 'bezier',
           'width': 5,
@@ -774,9 +766,9 @@
             let source = ele.source();
             let target = ele.target();
             for (let i = 0; i < arrayOfClusterArrays.length; i++)
-              if (arrayOfClusterArrays[i].includes(source.data('id')) &&
-              arrayOfClusterArrays[i].includes(target.data('id')))
-                return source.style("background-color");
+              if (arrayOfClusterArrays[i].includes(source.data("id")) &&
+              arrayOfClusterArrays[i].includes(target.data("id")))
+                return clusterColors[i];
 
             return '#756D76';
           }
