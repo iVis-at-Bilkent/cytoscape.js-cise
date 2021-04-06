@@ -176,10 +176,10 @@
   // Input Regulation
   function imposeMinMax(element){
     if(element.value != ""){
-      if(parseInt(element.value) < parseInt(element.min)){
+      if(Number(element.value) < Number(element.min)){
         element.value = element.min;
       }
-      if(parseInt(element.value) > parseInt(element.max)){
+      if(Number(element.value) > Number(element.max)){
         element.value = element.max;
       }
     }
