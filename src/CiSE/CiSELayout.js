@@ -626,7 +626,7 @@ CiSELayout.prototype.step3Init = function(){
     this.step = CiSELayout.STEP_3;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
-    this.coolingFactor = 0.7
+    this.coolingFactor = 0.4
     this.coolingCycle = 0;
 };
 
@@ -644,7 +644,7 @@ CiSELayout.prototype.step4Init = function() {
     {
         this.graphManager.getOnCircleNodes()[i].getOnCircleNodeExt().updateSwappingConditions();
     }
-    this.coolingFactor = 0.7
+    this.coolingFactor = 0.4
     this.coolingCycle = 0;
 };
 
@@ -658,7 +658,7 @@ CiSELayout.prototype.step5Init = function(){
     this.step = CiSELayout.STEP_5;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
-    this.coolingFactor = 0.4
+    this.coolingFactor = 0.3
     this.coolingCycle = 0;
 };
 
@@ -668,6 +668,7 @@ CiSELayout.prototype.step5Init = function(){
  *
  */
 CiSELayout.prototype.runSpringEmbedderTick = function (){
+
     // This function uses iterations but FDLayout uses this.totalIterations
     this.iterations++;
     this.totalIterations = this.iterations;
@@ -811,37 +812,47 @@ CiSELayout.prototype.calcSpringForces = function(){
  */
 CiSELayout.prototype.calcRepulsionForces = function() {
     let lNodes = this.graphManager.getNonOnCircleNodes();
-
     for(let i = 0; i < lNodes.length; i++){
         let nodeA = lNodes[i];
         for(let j = i + 1; j < lNodes.length; j++){
             let nodeB = lNodes[j];
             this.calcRepulsionForce(nodeA, nodeB);
         }
-    }
-
-    // We need the calculate repulsion forces for in-circle nodes as well
-    // to keep them inside circle.
-    let inCircleNodes = this.graphManager.getInCircleNodes();
-    for (let i = 0; i < inCircleNodes.length; i++) {
-        let inCircleNode = inCircleNodes[i];
-        let ownerCircle = inCircleNode.getOwner();
-
-        //TODO: inner nodes repulse on-circle nodes as well, not desired!
-        // Calculate repulsion forces with all nodes inside the owner circle
-        // of this inner node.
-
-        let childNodes = ownerCircle.getNodes();
-        for(let i = 0; i < childNodes.length; i++){
-            let childCiSENode = childNodes[i];
-
-            if (childCiSENode !== inCircleNode)
-            {
-                this.calcRepulsionForce(inCircleNode, childCiSENode);
-
+        if(nodeA.getChild() !== null && nodeA.getChild() !== undefined){
+            let inCircleNodes = nodeA.getChild().getInCircleNodes();
+            for(let k = 0; k < inCircleNodes.length; k++){
+                let inCircleNode = inCircleNodes[k];
+                for(let l = k + 1;l<inCircleNodes.length;l++){
+                    this.calcRepulsionForce(inCircleNode,inCircleNodes[l]);
+                }
             }
         }
     }
+    
+
+    // We need the calculate repulsion forces for in-circle nodes as well
+    // to keep them inside circle.
+    
+    // let inCircleNodes = this.graphManager.getInCircleNodes();
+    // for (let i = 0; i < inCircleNodes.length; i++) {
+    //     let inCircleNode = inCircleNodes[i];
+    //     let ownerCircle = inCircleNode.getOwner();
+
+    //     //TODO: inner nodes repulse on-circle nodes as well, not desired!
+    //     // Calculate repulsion forces with all nodes inside the owner circle
+    //     // of this inner node.
+
+    //     let childNodes = ownerCircle.getNodes();
+    //     for(let i = 0; i < childNodes.length; i++){
+    //         let childCiSENode = childNodes[i];
+
+    //         if (childCiSENode !== inCircleNode)
+    //         {
+    //             this.calcRepulsionForce(inCircleNode, childCiSENode);
+                
+    //         }
+    //     }
+    // }
 };
 
 /**
@@ -966,7 +977,7 @@ CiSELayout.prototype.moveNodes = function(){
                 let parentNodeOldCenterY = parentNode.getCenterY();
                 
                 if(parentNode.getChild().getInnerNodePushCount()/(parentNode.getChild().getInCircleNodes().length)
-                 > 450*parentNode.getChild().getOnCircleNodes().length)
+                 > 300*parentNode.getChild().getOnCircleNodes().length)
                 {
 
                     parentNode.getChild().setInnerNodePushCount(0);
