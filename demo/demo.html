@@ -347,7 +347,7 @@
     };
 
     var instance1 = window.cy.viewUtilities(options1);
-    var instance2 = window.cy.layoutUtilities();
+    var instance2 = window.cy.layoutUtilities("get");
     
     window.cy.nodes().on('cxttap', function(e){
       var collection = window.cy.collection();
@@ -573,6 +573,7 @@
       packComponents: document.getElementById('isPackComponents').checked,
       randomize: document.getElementById('isRandomize').checked
     });
+    cy.layoutUtilities("get").setOption("randomize", document.getElementById('isRandomize').checked);
 
     layout.run();
 
@@ -822,8 +823,7 @@
       ready: function () {
         // initialize layout-utilities extension
         this.layoutUtilities({
-          desiredAspectRatio: this.width() / this.height(),
-          componentSpacing: 30
+          desiredAspectRatio: this.width() / this.height()
         });
       },
       style: [
