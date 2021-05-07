@@ -4146,14 +4146,15 @@ var ContinuousLayout = function () {
           var currNode = states[i].nodes[j];
           var pd = getNodePositionData(currNode, states[i]);
           var bb = currNode.boundingBox();
-          nodes.push({ x: pd.x, y: pd.y, width: bb.w, height: bb.h });
+          nodes.push({ x: pd.x - bb.w / 2, y: pd.y - bb.h / 2, width: bb.w, height: bb.h });
         }
         var edges = [];
         for (var _j = 0; _j < states[i].edges.length; _j++) {
           var currEdge = states[i].edges[_j];
-          var sourceEndpoint = currEdge.sourceEndpoint();
-          var targetEndpoint = currEdge.targetEndpoint();
-          edges.push({ startX: sourceEndpoint.x, startY: sourceEndpoint.y, endX: targetEndpoint.x, endY: targetEndpoint.y });
+          // use source and target node positions in scratch as edge ends, because edge ends are not updated yet
+          var sourcePos = getNodePositionData(currEdge.source(), states[i]);
+          var targetPos = getNodePositionData(currEdge.target(), states[i]);
+          edges.push({ startX: sourcePos.x, startY: sourcePos.y, endX: targetPos.x, endY: targetPos.y });
         }
         components.push({ nodes: nodes, edges: edges });
       }

@@ -297,14 +297,15 @@ class ContinuousLayout {
         const currNode = states[i].nodes[j];
         let pd = getNodePositionData(currNode, states[i]);
         const bb = currNode.boundingBox();
-        nodes.push({ x: pd.x, y: pd.y, width: bb.w, height: bb.h });
+        nodes.push({ x: pd.x - bb.w / 2, y: pd.y - bb.h / 2, width: bb.w, height: bb.h });
       }
       let edges = [];
       for (let j = 0; j < states[i].edges.length; j++) {
         const currEdge = states[i].edges[j];
-        let sourceEndpoint = currEdge.sourceEndpoint();
-        let targetEndpoint = currEdge.targetEndpoint();
-        edges.push({ startX: sourceEndpoint.x, startY: sourceEndpoint.y, endX: targetEndpoint.x, endY: targetEndpoint.y });
+        // use source and target node positions in scratch as edge ends, because edge ends are not updated yet
+        let sourcePos = getNodePositionData(currEdge.source(), states[i]);
+        let targetPos = getNodePositionData(currEdge.target(), states[i]);
+        edges.push({ startX: sourcePos.x, startY: sourcePos.y, endX: targetPos.x, endY: targetPos.y });
       }
       components.push({ nodes: nodes, edges: edges });
     }
