@@ -69,7 +69,7 @@ The following options are supported when calling the layout, e.g,
 ```js
 var default = {
     // -------- Mandatory parameters --------
-    name = 'cise',
+    name : 'cise',
     
     // ClusterInfo can be a 2D array contaning node id's or a function that returns cluster ids. 
     // For the 2D array option, the index of the array indicates the cluster ID for all elements in 
