@@ -29,6 +29,7 @@ let HashMap = require('avsdf-base').layoutBase.HashMap;
 const PointD = require('avsdf-base').layoutBase.PointD;
 const DimensionD = require('avsdf-base').layoutBase.DimensionD;
 const IGeometry = require('avsdf-base').layoutBase.IGeometry;
+let FDLayoutConstants = require('avsdf-base').layoutBase.FDLayoutConstants;
 let AVSDFConstants = require('avsdf-base').AVSDFConstants;
 const AVSDFLayout = require('avsdf-base').AVSDFLayout;
 const CoSELayout = require('cose-base').CoSELayout;
@@ -96,6 +97,12 @@ function CiSELayout()
      */
     this.coolingCycle = 0;
     this.maxCoolingCycle = this.maxIterations / CiSEConstants.CONVERGENCE_CHECK_PERIOD;
+
+    /**
+     * Whether it uses Grid Variant
+     */
+    this.useFRGridVariant = CiSEConstants.DEFAULT_USE_SMART_REPULSION_RANGE_CALCULATION;
+    this.grid = null;
 }
 
 CiSELayout.prototype = Object.create(Layout.prototype);
@@ -482,6 +489,8 @@ CiSELayout.prototype.doStep1 = function(isIncremental){
 
         }
     }
+
+   
 };
 
 /**
@@ -626,8 +635,10 @@ CiSELayout.prototype.step3Init = function(){
     this.step = CiSELayout.STEP_3;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
+    this.repulsionRange = this.calcRepulsionRange();
     this.coolingFactor = 0.4
     this.coolingCycle = 0;
+    this.graphManager.rootGraph.updateBounds(false);
 };
 
 /**
@@ -646,6 +657,7 @@ CiSELayout.prototype.step4Init = function() {
     }
     this.coolingFactor = 0.4
     this.coolingCycle = 0;
+    this.graphManager.rootGraph.updateBounds(false);
 };
 
 /**
@@ -658,8 +670,10 @@ CiSELayout.prototype.step5Init = function(){
     this.step = CiSELayout.STEP_5;
     this.phase = CiSELayout.PHASE_OTHER;
     this.initSpringEmbedder();
-    this.coolingFactor = 0.3
+    this.coolingFactor = 0.5
     this.coolingCycle = 0;
+    this.repulsionRange = this.calcRepulsionRange();
+    this.graphManager.rootGraph.updateBounds(false);
 };
 
 /**
@@ -810,17 +824,46 @@ CiSELayout.prototype.calcSpringForces = function(){
  * This method calculates the repulsion forces for each pair of nodes.
  * Repulsions need not be calculated for on-circle nodes.
  */
-CiSELayout.prototype.calcRepulsionForces = function() {
+CiSELayout.prototype.calcRepulsionForces = function(gridUpdateAllowed = true, forceToNodeSurroundingUpdate = false) {
+    
     let lNodes = this.graphManager.getNonOnCircleNodes();
-    for(let i = 0; i < lNodes.length; i++){
-        let nodeA = lNodes[i];
-        for(let j = i + 1; j < lNodes.length; j++){
-            let nodeB = lNodes[j];
-            this.calcRepulsionForce(nodeA, nodeB);
+    let nodeA;
+    
+    if (this.useFRGridVariant && this.step > CiSELayout.STEP_2)
+    {       
+        
+        let root = this.graphManager.rootGraph;
+        let processedNodeSet = new Set();
+    
+        if ((this.totalIterations % FDLayoutConstants.GRID_CALCULATION_CHECK_PERIOD == 1 && gridUpdateAllowed))
+        {       
+            root.updateBounds(false);
+            this.updateGrid();  
         }
+
+        for(let i = 0; i < lNodes.length; i++){
+            nodeA = lNodes[i];
+            this.calculateRepulsionForceOfANode(nodeA, processedNodeSet, gridUpdateAllowed, forceToNodeSurroundingUpdate);
+            processedNodeSet.add(nodeA);
+
+        }
+    }
+    else{
+        for(let i = 0; i < lNodes.length; i++){
+            let nodeA = lNodes[i];
+            for(let j = i + 1; j < lNodes.length; j++){
+                let nodeB = lNodes[j];
+                this.calculateRepulsionForce(nodeA, nodeB);
+            }
+        }
+    }
+    for(let i = 0; i < lNodes.length && this.step > CiSELayout.STEP_4; i++){
+        let nodeA = lNodes[i];
         if(nodeA.getChild() !== null && nodeA.getChild() !== undefined){
+
             let inCircleNodes = nodeA.getChild().getInCircleNodes();
             for(let k = 0; k < inCircleNodes.length; k++){
+
                 let inCircleNode = inCircleNodes[k];
                 for(let l = k + 1;l<inCircleNodes.length;l++){
                     this.calcRepulsionForce(inCircleNode,inCircleNodes[l]);
@@ -828,32 +871,12 @@ CiSELayout.prototype.calcRepulsionForces = function() {
             }
         }
     }
-    
-
-    // We need the calculate repulsion forces for in-circle nodes as well
-    // to keep them inside circle.
-    
-    // let inCircleNodes = this.graphManager.getInCircleNodes();
-    // for (let i = 0; i < inCircleNodes.length; i++) {
-    //     let inCircleNode = inCircleNodes[i];
-    //     let ownerCircle = inCircleNode.getOwner();
-
-    //     //TODO: inner nodes repulse on-circle nodes as well, not desired!
-    //     // Calculate repulsion forces with all nodes inside the owner circle
-    //     // of this inner node.
-
-    //     let childNodes = ownerCircle.getNodes();
-    //     for(let i = 0; i < childNodes.length; i++){
-    //         let childCiSENode = childNodes[i];
-
-    //         if (childCiSENode !== inCircleNode)
-    //         {
-    //             this.calcRepulsionForce(inCircleNode, childCiSENode);
-                
-    //         }
-    //     }
-    // }
 };
+
+CiSELayout.prototype.calcRepulsionRange = function () {
+    // formula is 2 x idealEdgeLength
+    return (2 * CiSEConstants.DEFAULT_EDGE_LENGTH * this.idealInterClusterEdgeLengthCoefficient);
+  };
 
 /**
  * This method calculates the gravitational forces for each node. On-circle

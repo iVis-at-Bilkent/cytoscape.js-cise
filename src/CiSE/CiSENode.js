@@ -178,12 +178,12 @@ CiSENode.prototype.reflectCenterChangeToChildren = function (oldX,oldY) {
     
     if (this.getChild() !== null && this.getChild() !== undefined )
     {
-        let innCircleNodes = this.getChild().getInCircleNodes();
+        let inCircleNodes = this.getChild().getInCircleNodes();
         let centerX = this.getCenterX();
         let centerY = this.getCenterY();
         
-        for(let i = 0; i < innCircleNodes.length; i++) {
-            let node = innCircleNodes[i];
+        for(let i = 0; i < inCircleNodes.length; i++) {
+            let node = inCircleNodes[i];
             node.moveBy(centerX-oldX, centerY-oldY);
         }
     }
