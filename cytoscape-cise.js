@@ -3875,15 +3875,19 @@ var ContinuousLayout = function () {
         throw "ERROR: Node information is invalid/undefined/null or simply empty. Please make sure nodes are passed properly. Can't layout an empty graph";
       }
 
-      this.states = [];
       var components = this.getDisjointSets(o.cy.$(), this.state.clusters);
-      for (var i = 0; i < components.length; i++) {
-        var currComp = components[i];
-        var state = assign({}, o, { layout: this, nodes: currComp.nodes(), edges: currComp.edges(), tickIndex: 0, firstUpdate: true });
-        state.animateEnd = o.animate && o.animate === 'end';
-        state.animateContinuously = o.animate && !state.animateEnd;
-        state.clusters = this.getRelevantClusters4Nodes(state.clusters, state.nodes);
-        this.states.push(state);
+
+      // if there is only one component, then no need to separate states and apply component packing
+      if (components.length > 1) {
+        this.states = [];
+        for (var i = 0; i < components.length; i++) {
+          var currComp = components[i];
+          var state = assign({}, o, { layout: this, nodes: currComp.nodes(), edges: currComp.edges(), tickIndex: 0, firstUpdate: true });
+          state.animateEnd = o.animate && o.animate === 'end';
+          state.animateContinuously = o.animate && !state.animateEnd;
+          state.clusters = this.getRelevantClusters4Nodes(state.clusters, state.nodes);
+          this.states.push(state);
+        }
       }
     }
   }
