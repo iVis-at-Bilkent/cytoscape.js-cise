@@ -6,7 +6,11 @@ cytoscape.js-cise
 
 CiSE(Circular Spring Embedder) is an algorithm based on the traditional force-directed layout scheme with extensions to move and rotate nodes in the same cluster as a group. Further local improvements may be obtained by flipping clusters and by swapping neighboring node pairs in the same cluster, reducing the edge crossing number.
 
-The algorithm is implemented as a Cytoscape.js extension by [i-Vis Lab](http://cs.bilkent.edu.tr/~ivis/) in Bilkent University ([demo](https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-cise/develop/demo/demo.html))
+The algorithm is implemented as a Cytoscape.js extension by [i-Vis Lab](http://cs.bilkent.edu.tr/~ivis/) of Bilkent University.
+Here is a demo:
+<p align="center">
+<a href="https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-cise/develop/demo/demo.html"><img src="https://www.cs.bilkent.edu.tr/~ivis/images/demo1.png" height=42px></a>
+</p>
 
 Please cite the following when using this layout:
 
@@ -209,4 +213,8 @@ This project is set up to automatically be published to npm and bower.  To publi
 
 ## Team
 
-  * [Alihan Okka](https://github.com/alihanokka), [H. Eren Calik](https://github.com/herencalik) and [Ugur Dogrusoz](https://github.com/ugurdogrusoz) of [i-Vis at Bilkent University](http://www.cs.bilkent.edu.tr/~ivis)
+  * [H. Eren Calik](https://github.com/herencalik), [Ugur Dogrusoz](https://github.com/ugurdogrusoz) of [i-Vis at Bilkent University](http://www.cs.bilkent.edu.tr/~ivis)
+
+### Alumni
+
+  * [Alihan Okka](https://github.com/alihanokka)
