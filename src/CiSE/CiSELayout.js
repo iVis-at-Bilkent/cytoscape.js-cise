@@ -985,6 +985,12 @@ CiSELayout.prototype.moveNodes = function(){
             inCircleNode = inCircleNodes[i];
             let parentNode = inCircleNode.getParent();
 
+            if (inCircleNode.getOnCircleNeighbors().length > 4){
+                let constraintCoefficient  = (0.5 + Math.pow(0.5,inCircleNode.getOnCircleNeighbors().length-4));
+                inCircleNode.displacementX = inCircleNode.displacementX * constraintCoefficient;
+                inCircleNode.displacementY = inCircleNode.displacementY * constraintCoefficient;
+            }
+
             let initialDisplacementX = inCircleNode.displacementX;
             let initialDisplacementY = inCircleNode.displacementY;
 
@@ -1040,7 +1046,6 @@ CiSELayout.prototype.moveNodes = function(){
                     
                 }
             }
-
             inCircleNode.innerMove(initialDisplacementX,initialDisplacementY);
         }
 

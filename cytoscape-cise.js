@@ -2210,6 +2210,12 @@ CiSELayout.prototype.moveNodes = function () {
             inCircleNode = inCircleNodes[_i18];
             var parentNode = inCircleNode.getParent();
 
+            if (inCircleNode.getOnCircleNeighbors().length > 4) {
+                var constraintCoefficient = 0.5 + Math.pow(0.5, inCircleNode.getOnCircleNeighbors().length - 4);
+                inCircleNode.displacementX = inCircleNode.displacementX * constraintCoefficient;
+                inCircleNode.displacementY = inCircleNode.displacementY * constraintCoefficient;
+            }
+
             var initialDisplacementX = inCircleNode.displacementX;
             var initialDisplacementY = inCircleNode.displacementY;
 
@@ -2249,7 +2255,6 @@ CiSELayout.prototype.moveNodes = function () {
                     }
                 }
             }
-
             inCircleNode.innerMove(initialDisplacementX, initialDisplacementY);
         }
     } else {
