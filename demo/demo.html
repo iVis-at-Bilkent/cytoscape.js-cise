@@ -366,7 +366,7 @@
     
       if(prev != sourceId){
         prev = sourceId;
-        var random = 1 + 5 * Math.random();
+        var random = Math.floor(1 + 5 * Math.random());
         var newNodes = [];
         for(var counter = 1; counter <= random; counter++){
           var nodeId = sourceId + 'n' + counter;
@@ -374,6 +374,7 @@
           if(arrayOfClusterArrays[clusterId] != undefined && !arrayOfClusterArrays[clusterId].includes(nodeId)){
             arrayOfClusterArrays[clusterId].push(nodeId);
             newNodes.push(nodeId);
+            // add new node and new edge that connects the new node to source node
             window.cy.add([{
             "data": {
                   "id": nodeId,
@@ -413,8 +414,13 @@
             ]);
           }
           collection = collection.union(cy.$id(nodeId));
-          instance2.placeNewNodes(cy.$id(nodeId));
         }
+        // place newly added nodes
+        var nodesToBeAdded = cy.collection();
+        newNodes.forEach((nodeId)=>{nodesToBeAdded.merge(cy.$id(nodeId))});
+        instance2.placeNewNodes(nodesToBeAdded);
+        
+        // add random edges between newly added nodes
         var randomEdge = Math.floor(1 + (random-1) * Math.random());
         for(var i = 0; i < randomEdge; i++){
           let index1 = Math.floor(1 + (newNodes.length-1) * Math.random());
