@@ -186,7 +186,9 @@ var default = {
     stop: function(){}, // on layoutstop
 }
 ```
-To be able to use `packComponents` option, `cytoscape-layout-utilities` extension should also be registered and initialized in the application. It is also suggested to syncronize `randomize` option in the layout-utilities extension with `randomize` option in the CiSE layout to able to apply the correct packing method.
+To be able to use `packComponents` option, `cytoscape-layout-utilities` extension should also be registered in the application. 
+Packing related [options](https://github.com/iVis-at-Bilkent/cytoscape.js-layout-utilities#default-options) should be set via `cytoscape-layout-utilities` extension.
+If they are not set, CiSE uses default options.
 
 ## Build targets
 

@@ -4193,9 +4193,9 @@ var ContinuousLayout = function () {
 
       var layUtil = cy.layoutUtilities('get');
       if (!layUtil) {
-        layUtil = cy.layoutUtilities({ desiredAspectRatio: cy.width() / cy.height() });
+        layUtil = cy.layoutUtilities();
       }
-      var shifts = layUtil.packComponents(components).shifts;
+      var shifts = layUtil.packComponents(components, this.options.randomize).shifts;
       var node2shift = {};
       for (var _i6 = 0; _i6 < states.length; _i6++) {
         for (var _j2 = 0; _j2 < states[_i6].nodes.length; _j2++) {

@@ -316,9 +316,9 @@ class ContinuousLayout {
 
     let layUtil = cy.layoutUtilities('get');
     if (!layUtil) {
-      layUtil = cy.layoutUtilities({ desiredAspectRatio: cy.width() / cy.height() });
+      layUtil = cy.layoutUtilities();
     }
-    const shifts = layUtil.packComponents(components).shifts;
+    const shifts = layUtil.packComponents(components, this.options.randomize).shifts;
     let node2shift = {};
     for (let i = 0; i < states.length; i++) {
       for (let j = 0; j < states[i].nodes.length; j++) {
