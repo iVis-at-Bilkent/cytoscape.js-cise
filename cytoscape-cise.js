@@ -2192,7 +2192,7 @@ CiSELayout.prototype.moveNodes = function () {
         var nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
         // Simply move all non-on-circle nodes.
         for (var i = 0; i < nonOnCircleNodes.length; i++) {
-            nonOnCircleNodes[i].move();
+            nonOnCircleNodes[i].move(this.coolingFactor);
             // Also make required rotations for circles
             if (nonOnCircleNodes[i].getChild() !== null && nonOnCircleNodes[i].getChild() !== undefined) {
                 nonOnCircleNodes[i].getChild().rotate();
@@ -2211,7 +2211,7 @@ CiSELayout.prototype.moveNodes = function () {
             var parentNode = inCircleNode.getParent();
 
             if (inCircleNode.getOnCircleNeighbors().length > 4) {
-                var constraintCoefficient = 0.5 + Math.pow(0.5, inCircleNode.getOnCircleNeighbors().length - 4);
+                var constraintCoefficient = 4 / inCircleNode.getOnCircleNeighbors().length;
                 inCircleNode.displacementX = inCircleNode.displacementX * constraintCoefficient;
                 inCircleNode.displacementY = inCircleNode.displacementY * constraintCoefficient;
             }
@@ -2255,7 +2255,7 @@ CiSELayout.prototype.moveNodes = function () {
                     }
                 }
             }
-            inCircleNode.innerMove(initialDisplacementX, initialDisplacementY);
+            inCircleNode.innerMove(initialDisplacementX, initialDisplacementY, this.coolingFactor);
         }
     } else {
         // If in perform-swap phase of step 4, we have to look for swappings
@@ -2855,10 +2855,12 @@ CiSENode.prototype.getNoOfChildren = function () {
  * this iteration.
  */
 CiSENode.prototype.move = function () {
+    var coolingFactor = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1;
+
     var layout = this.getOwner().getGraphManager().getLayout();
 
-    this.displacementX = this.getLimitedDisplacement(this.displacementX);
-    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+    this.displacementX = this.getLimitedDisplacement(this.displacementX) * coolingFactor;
+    this.displacementY = this.getLimitedDisplacement(this.displacementY) * coolingFactor;
 
     // First propagate movement to children if it's a circle
     if (this.getChild() !== null && this.getChild() !== undefined) {
@@ -2913,10 +2915,12 @@ CiSENode.prototype.reflectCenterChangeToChildren = function (oldX, oldY) {
  * to let layout continue, unabated displacement is reflected to layout's total displacement.
  */
 CiSENode.prototype.innerMove = function (displacementRequestX, displacementRequestY) {
+    var coolingFactor = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
+
     var layout = this.getOwner().getGraphManager().getLayout();
 
-    this.displacementX = this.getLimitedDisplacement(this.displacementX);
-    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+    this.displacementX = this.getLimitedDisplacement(this.displacementX) * coolingFactor;
+    this.displacementY = this.getLimitedDisplacement(this.displacementY) * coolingFactor;
 
     this.moveBy(this.displacementX, this.displacementY);
     layout.totalDisplacement += Math.abs(this.getLimitedDisplacement(displacementRequestX)) + Math.abs(this.getLimitedDisplacement(displacementRequestY));

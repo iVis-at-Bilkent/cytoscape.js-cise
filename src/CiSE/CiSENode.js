@@ -132,11 +132,11 @@ CiSENode.prototype.getNoOfChildren = function () {
  * This method moves this node as a result of the computations at the end of
  * this iteration.
  */
-CiSENode.prototype.move = function () {
+CiSENode.prototype.move = function (coolingFactor = 1) {
     let layout = this.getOwner().getGraphManager().getLayout();
 
-    this.displacementX = this.getLimitedDisplacement(this.displacementX);
-    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+    this.displacementX = this.getLimitedDisplacement(this.displacementX)*coolingFactor;
+    this.displacementY = this.getLimitedDisplacement(this.displacementY)*coolingFactor;
 
     // First propagate movement to children if it's a circle
     if (this.getChild() !== null && this.getChild() !== undefined )
@@ -195,11 +195,11 @@ CiSENode.prototype.reflectCenterChangeToChildren = function (oldX,oldY) {
  * this iteration. However, as the displacement can be limited because of the inner boundaries,
  * to let layout continue, unabated displacement is reflected to layout's total displacement.
  */
-CiSENode.prototype.innerMove = function (displacementRequestX, displacementRequestY) {
+CiSENode.prototype.innerMove = function (displacementRequestX, displacementRequestY,coolingFactor = 1) {
     let layout = this.getOwner().getGraphManager().getLayout();
 
-    this.displacementX = this.getLimitedDisplacement(this.displacementX);
-    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+    this.displacementX = this.getLimitedDisplacement(this.displacementX)*coolingFactor;
+    this.displacementY = this.getLimitedDisplacement(this.displacementY)*coolingFactor;
 
     this.moveBy(this.displacementX, this.displacementY);
     layout.totalDisplacement += Math.abs(this.getLimitedDisplacement(displacementRequestX)) 

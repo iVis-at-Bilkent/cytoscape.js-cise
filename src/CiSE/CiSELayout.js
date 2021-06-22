@@ -965,7 +965,7 @@ CiSELayout.prototype.moveNodes = function(){
         // Simply move all non-on-circle nodes.
         for (let i = 0; i < nonOnCircleNodes.length; i++)
         {
-            nonOnCircleNodes[i].move();
+            nonOnCircleNodes[i].move(this.coolingFactor);
             // Also make required rotations for circles
             if (nonOnCircleNodes[i].getChild() !== null && nonOnCircleNodes[i].getChild() !== undefined )
             {
@@ -986,7 +986,7 @@ CiSELayout.prototype.moveNodes = function(){
             let parentNode = inCircleNode.getParent();
 
             if (inCircleNode.getOnCircleNeighbors().length > 4){
-                let constraintCoefficient  = (0.5 + Math.pow(0.5,inCircleNode.getOnCircleNeighbors().length-4));
+                let constraintCoefficient  = 4/(inCircleNode.getOnCircleNeighbors().length);
                 inCircleNode.displacementX = inCircleNode.displacementX * constraintCoefficient;
                 inCircleNode.displacementY = inCircleNode.displacementY * constraintCoefficient;
             }
@@ -1046,7 +1046,7 @@ CiSELayout.prototype.moveNodes = function(){
                     
                 }
             }
-            inCircleNode.innerMove(initialDisplacementX,initialDisplacementY);
+            inCircleNode.innerMove(initialDisplacementX,initialDisplacementY,this.coolingFactor);
         }
 
     } else {
