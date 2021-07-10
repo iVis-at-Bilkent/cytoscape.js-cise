@@ -671,10 +671,11 @@ CiSECircle.prototype.setOnCircleNodeInner = function(node) {
 CiSECircle.prototype.moveOnCircleNodeInside = function(nodeList) {
 
     // calculateRadius
-    this.reCalculateCircleSizeAndRadius();
+    this.reCalculateCircleSizeAndRadius(true);
 
     //calculateNodePositions
     this.reCalculateNodeAnglesAndPositions();
+
     let randomX,randomY;
     for(let i = 0; i<nodeList.length;i++){
 
@@ -685,13 +686,14 @@ CiSECircle.prototype.moveOnCircleNodeInside = function(nodeList) {
 
         node.setCenter(this.getParent().getCenterX() + randomX, this.getParent().getCenterY() + randomY);
     }
+    
 };
 
 /**
  * This method calculates the size and radius of this circle with respect
  * to the sizes of the vertices and the node separation parameter.
  */
-CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
+CiSECircle.prototype.reCalculateCircleSizeAndRadius = function (firstCall = false) {
     
     let totalDiagonal = 0;
     let onCircleNodes = this.getOnCircleNodes();
@@ -708,6 +710,31 @@ CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
     let nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
 
     let perimeter = totalDiagonal + this.getOnCircleNodes().length * nodeSeparation;
+
+    if(firstCall){
+
+        let largestDiagonal = 0;
+        let nodeList = this.getInCircleNodes();
+
+        for(let i = 0; i<nodeList.length; i++){
+
+            if(nodeList[i].getDiagonal()>largestDiagonal)
+                largestDiagonal = nodeList[i].getDiagonal();
+
+        }
+
+        largestDiagonal += CiSEConstants.DEFAULT_INNER_EDGE_LENGTH;
+
+        let diameter = perimeter / (Math.PI) - largestDiagonal*2;
+
+        if( diameter < largestDiagonal * Math.ceil(Math.sqrt(nodeList.length))+CiSEConstants.DEFAULT_INNER_EDGE_LENGTH){
+            let additionalNodeSep = (largestDiagonal * Math.ceil(Math.sqrt(nodeList.length)) - diameter)/this.getOnCircleNodes().length;
+            this.setAdditionalNodeSeparation(additionalNodeSep);
+            nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
+            perimeter = totalDiagonal + this.getOnCircleNodes().length * nodeSeparation;
+        }
+    }
+    
     this.radius = perimeter / (2 * Math.PI);
     this.calculateParentNodeDimension();
 };
@@ -752,6 +779,9 @@ CiSECircle.prototype.reCalculateNodePositions = function () {
         node.setCenter(parentCenterX + this.radius * Math.cos(angle),
                        parentCenterY + this.radius * Math.sin(angle));
     }
+    this.updateBounds(true);
+    this.getParent().updateBounds(false);
+    this.getGraphManager().rootGraph.updateBounds(false);
 };
 
 /**
@@ -794,6 +824,9 @@ CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
         node.setCenter(parentCenterX + this.radius * Math.cos(angle),
                        parentCenterY + this.radius * Math.sin(angle));
     }
+    this.updateBounds(true);
+    this.getParent().updateBounds(false);
+    this.getGraphManager().rootGraph.updateBounds(false);
 };
 
 module.exports = CiSECircle;

@@ -154,6 +154,8 @@ CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP = 6;
 // Number of iterations that should be done in between two flips.
 CiSEConstants.REVERSE_PERIOD = 25;
 
+CiSEConstants.CLUSTER_ENLARGEMENT_CHECK_PERIOD = 50;
+
 CiSEConstants.DEFAULT_USE_SMART_REPULSION_RANGE_CALCULATION = true;
 
 module.exports = CiSEConstants;
@@ -820,10 +822,11 @@ CiSECircle.prototype.setOnCircleNodeInner = function (node) {
 CiSECircle.prototype.moveOnCircleNodeInside = function (nodeList) {
 
     // calculateRadius
-    this.reCalculateCircleSizeAndRadius();
+    this.reCalculateCircleSizeAndRadius(true);
 
     //calculateNodePositions
     this.reCalculateNodeAnglesAndPositions();
+
     var randomX = void 0,
         randomY = void 0;
     for (var i = 0; i < nodeList.length; i++) {
@@ -842,6 +845,8 @@ CiSECircle.prototype.moveOnCircleNodeInside = function (nodeList) {
  * to the sizes of the vertices and the node separation parameter.
  */
 CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
+    var firstCall = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+
 
     var totalDiagonal = 0;
     var onCircleNodes = this.getOnCircleNodes();
@@ -857,6 +862,29 @@ CiSECircle.prototype.reCalculateCircleSizeAndRadius = function () {
     var nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
 
     var perimeter = totalDiagonal + this.getOnCircleNodes().length * nodeSeparation;
+
+    if (firstCall) {
+
+        var largestDiagonal = 0;
+        var nodeList = this.getInCircleNodes();
+
+        for (var _i5 = 0; _i5 < nodeList.length; _i5++) {
+
+            if (nodeList[_i5].getDiagonal() > largestDiagonal) largestDiagonal = nodeList[_i5].getDiagonal();
+        }
+
+        largestDiagonal += CiSEConstants.DEFAULT_INNER_EDGE_LENGTH;
+
+        var diameter = perimeter / Math.PI - largestDiagonal * 2;
+
+        if (diameter < largestDiagonal * Math.ceil(Math.sqrt(nodeList.length)) + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH) {
+            var additionalNodeSep = (largestDiagonal * Math.ceil(Math.sqrt(nodeList.length)) - diameter) / this.getOnCircleNodes().length;
+            this.setAdditionalNodeSeparation(additionalNodeSep);
+            nodeSeparation = layout.getNodeSeparation() + this.getAdditionalNodeSeparation();
+            perimeter = totalDiagonal + this.getOnCircleNodes().length * nodeSeparation;
+        }
+    }
+
     this.radius = perimeter / (2 * Math.PI);
     this.calculateParentNodeDimension();
 };
@@ -895,6 +923,9 @@ CiSECircle.prototype.reCalculateNodePositions = function () {
         node.getOnCircleNodeExt().setAngle(angle);
         node.setCenter(parentCenterX + this.radius * Math.cos(angle), parentCenterY + this.radius * Math.sin(angle));
     }
+    this.updateBounds(true);
+    this.getParent().updateBounds(false);
+    this.getGraphManager().rootGraph.updateBounds(false);
 };
 
 /**
@@ -931,6 +962,9 @@ CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
         node.getOnCircleNodeExt().setAngle(angle);
         node.setCenter(parentCenterX + this.radius * Math.cos(angle), parentCenterY + this.radius * Math.sin(angle));
     }
+    this.updateBounds(true);
+    this.getParent().updateBounds(false);
+    this.getGraphManager().rootGraph.updateBounds(false);
 };
 
 module.exports = CiSECircle;
@@ -1346,6 +1380,11 @@ function CiSELayout() {
      * Current phase of current step
      */
     this.phase = CiSELayout.PHASE_NOT_STARTED;
+
+    /**
+     * Whether in-circle nodes are taken inside
+     */
+    this.innerStepDone = false;
 
     /**
      * Holds the set of pairs swapped in the last swap phase.
@@ -1974,6 +2013,10 @@ CiSELayout.prototype.runSpringEmbedderTick = function () {
         } else {
             this.phase = CiSELayout.PHASE_OTHER;
         }
+    } else if (this.innerStepDone === true) {
+        if (this.iterations % CiSEConstants.CLUSTER_ENLARGEMENT_CHECK_PERIOD === 0) {
+            this.clusterEnlargementCheck();
+        }
     }
 
     this.calcSpringForces();
@@ -1985,6 +2028,24 @@ CiSELayout.prototype.runSpringEmbedderTick = function () {
     return this.iterations >= this.maxIterations;
 };
 
+CiSELayout.prototype.clusterEnlargementCheck = function () {
+    var lNodes = this.graphManager.getNonOnCircleNodes();
+
+    for (var i = 0; i < lNodes.length; i++) {
+
+        var parentNode = lNodes[i];
+        var parentNodeOldCenterX = parentNode.getCenterX();
+        var parentNodeOldCenterY = parentNode.getCenterY();
+
+        if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 300 * parentNode.getChild().getOnCircleNodes().length) {
+            parentNode.getChild().setInnerNodePushCount(0);
+            parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 6);
+            parentNode.getChild().reCalculateCircleSizeAndRadius();
+            parentNode.getChild().reCalculateNodePositions();
+            parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX, parentNodeOldCenterY);
+        }
+    }
+};
 /**
  * This method prepares circles for possible reversal by computing the order
  * matrix of each circle. It also determines any circles that should never
@@ -2069,27 +2130,37 @@ CiSELayout.prototype.calcRepulsionForces = function () {
         var root = this.graphManager.rootGraph;
         var processedNodeSet = new Set();
 
-        if (this.totalIterations % FDLayoutConstants.GRID_CALCULATION_CHECK_PERIOD == 1 && gridUpdateAllowed) {
-            root.updateBounds(false);
+        if (this.totalIterations % FDLayoutConstants.GRID_CALCULATION_CHECK_PERIOD === 1 && gridUpdateAllowed) {
+            if (!this.innerStepDone) {
+                root.updateBounds(true);
+            } else {
+                for (var i = 0; i < lNodes[i]; i++) {
+                    var childNodes = lNodes[i].getChild().getNodes();
+                    for (var j = 0; j < lNodes[i].getNoOfChildren; j++) {
+                        childNodes[j].updateBounds(true);
+                    }lNodes[i].updateBounds(false);
+                }
+                root.updateBounds(false);
+            }
             this.updateGrid();
         }
 
-        for (var i = 0; i < lNodes.length; i++) {
-            nodeA = lNodes[i];
+        for (var _i15 = 0; _i15 < lNodes.length; _i15++) {
+            nodeA = lNodes[_i15];
             this.calculateRepulsionForceOfANode(nodeA, processedNodeSet, gridUpdateAllowed, forceToNodeSurroundingUpdate);
             processedNodeSet.add(nodeA);
         }
     } else {
-        for (var _i15 = 0; _i15 < lNodes.length; _i15++) {
-            var _nodeA = lNodes[_i15];
-            for (var j = _i15 + 1; j < lNodes.length; j++) {
-                var nodeB = lNodes[j];
+        for (var _i16 = 0; _i16 < lNodes.length; _i16++) {
+            var _nodeA = lNodes[_i16];
+            for (var _j = _i16 + 1; _j < lNodes.length; _j++) {
+                var nodeB = lNodes[_j];
                 this.calculateRepulsionForce(_nodeA, nodeB);
             }
         }
     }
-    for (var _i16 = 0; _i16 < lNodes.length && this.step > CiSELayout.STEP_4; _i16++) {
-        var _nodeA2 = lNodes[_i16];
+    for (var _i17 = 0; _i17 < lNodes.length && this.step > CiSELayout.STEP_4; _i17++) {
+        var _nodeA2 = lNodes[_i17];
         if (_nodeA2.getChild() !== null && _nodeA2.getChild() !== undefined) {
 
             var inCircleNodes = _nodeA2.getChild().getInCircleNodes();
@@ -2161,8 +2232,8 @@ CiSELayout.prototype.calcTotalForces = function () {
     }
 
     var onCircleNodes = this.graphManager.getOnCircleNodes();
-    for (var _i17 = 0; _i17 < onCircleNodes.length; _i17++) {
-        var _node = onCircleNodes[_i17];
+    for (var _i18 = 0; _i18 < onCircleNodes.length; _i18++) {
+        var _node = onCircleNodes[_i18];
         var parentNode = _node.getOwner().getParent();
         var values = _node.getOwner().decomposeForce(_node);
 
@@ -2205,9 +2276,8 @@ CiSELayout.prototype.moveNodes = function () {
         var inCircleNodes = this.graphManager.getInCircleNodes();
         var inCircleNode = void 0;
 
-        for (var _i18 = 0; _i18 < inCircleNodes.length; _i18++) {
-
-            inCircleNode = inCircleNodes[_i18];
+        for (var _i19 = 0; _i19 < inCircleNodes.length; _i19++) {
+            inCircleNode = inCircleNodes[_i19];
             var parentNode = inCircleNode.getParent();
 
             if (inCircleNode.getOnCircleNeighbors().length > 4) {
@@ -2227,32 +2297,20 @@ CiSELayout.prototype.moveNodes = function () {
                 var parentNodeOldCenterX = parentNode.getCenterX();
                 var parentNodeOldCenterY = parentNode.getCenterY();
 
-                if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 300 * parentNode.getChild().getOnCircleNodes().length) {
+                var hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(), inCircleNode.getCenterY(), inCircleNode.getCenterX() + inCircleNode.displacementX, inCircleNode.getCenterY() + inCircleNode.displacementY, parentNodeOldCenterX, parentNodeOldCenterY, parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 5 - inCircleNode.getDiagonal());
 
-                    parentNode.getChild().setInnerNodePushCount(0);
-                    parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 3);
-                    parentNode.getChild().reCalculateCircleSizeAndRadius();
-                    parentNode.getChild().reCalculateNodePositions();
-                    parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX, parentNodeOldCenterY);
-
-                    inCircleNode.displacementX = 0;
-                    inCircleNode.displacementY = 0;
-                } else {
-                    var hit = IGeometry.findCircleLineIntersections(inCircleNode.getCenterX(), inCircleNode.getCenterY(), inCircleNode.getCenterX() + inCircleNode.displacementX, inCircleNode.getCenterY() + inCircleNode.displacementY, parentNodeOldCenterX, parentNodeOldCenterY, parentNode.getChild().getRadius() - CiSEConstants.DEFAULT_INNER_EDGE_LENGTH / 5 - inCircleNode.getDiagonal());
-
-                    if (hit !== null) {
-                        if (hit[0] > 0) {
-                            var displacementLength = Math.sqrt(Math.pow(inCircleNode.displacementX, 2) + Math.pow(inCircleNode.displacementY, 2));
-                            inCircleNode.displacementX = hit[0] * inCircleNode.displacementX - inCircleNode.displacementX / displacementLength;
-                            inCircleNode.displacementY = hit[0] * inCircleNode.displacementY - inCircleNode.displacementY / displacementLength;
-                        } else {
-                            inCircleNode.displacementX = 0;
-                            inCircleNode.displacementY = 0;
-                        }
+                if (hit !== null) {
+                    if (hit[0] > 0) {
+                        var displacementLength = Math.sqrt(Math.pow(inCircleNode.displacementX, 2) + Math.pow(inCircleNode.displacementY, 2));
+                        inCircleNode.displacementX = hit[0] * inCircleNode.displacementX - inCircleNode.displacementX / displacementLength;
+                        inCircleNode.displacementY = hit[0] * inCircleNode.displacementY - inCircleNode.displacementY / displacementLength;
                     } else {
                         inCircleNode.displacementX = 0;
                         inCircleNode.displacementY = 0;
                     }
+                } else {
+                    inCircleNode.displacementX = 0;
+                    inCircleNode.displacementY = 0;
                 }
             }
             inCircleNode.innerMove(initialDisplacementX, initialDisplacementY, this.coolingFactor);
@@ -2289,8 +2347,8 @@ CiSELayout.prototype.moveNodes = function () {
         var inSameDirection = void 0;
 
         // Check each node with its next node for swapping
-        for (var _i19 = 0; _i19 < size; _i19++) {
-            firstNode = ciseOnCircleNodes[_i19];
+        for (var _i20 = 0; _i20 < size; _i20++) {
+            firstNode = ciseOnCircleNodes[_i20];
             secondNode = firstNode.getOnCircleNodeExt().getNextNode();
             firstNodeExt = firstNode.getOnCircleNodeExt();
             secondNodeExt = secondNode.getOnCircleNodeExt();
@@ -2383,8 +2441,8 @@ CiSELayout.prototype.moveNodes = function () {
         }
 
         // Now process all safe pairs
-        for (var _i20 = 0; _i20 < safePairs.length; _i20++) {
-            var safePair = safePairs[_i20];
+        for (var _i21 = 0; _i21 < safePairs.length; _i21++) {
+            var safePair = safePairs[_i21];
 
             // Check if discrepancy is above the threshold (enough to swap)
             if (safePair.inSameDirection() || safePair.getDiscrepancy() < CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP) {
@@ -2410,15 +2468,15 @@ CiSELayout.prototype.moveNodes = function () {
 
         // Update swap history
         this.swappedPairsInLastIteration = [];
-        for (var _i21 = 0; _i21 < swappedPairs.length; _i21++) {
-            this.swappedPairsInLastIteration.push(swappedPairs[_i21]);
+        for (var _i22 = 0; _i22 < swappedPairs.length; _i22++) {
+            this.swappedPairsInLastIteration.push(swappedPairs[_i22]);
         }
 
         // Reset all discrepancy values of on circle nodes.
         var node = void 0;
 
-        for (var _i22 = 0; _i22 < size; _i22++) {
-            node = ciseOnCircleNodes[_i22];
+        for (var _i23 = 0; _i23 < size; _i23++) {
+            node = ciseOnCircleNodes[_i23];
             node.getOnCircleNodeExt().setDisplacementForSwap(0.0);
         }
     }
@@ -2512,6 +2570,7 @@ CiSELayout.prototype.findAndMoveInnerNodes = function () {
             if (innerNodeList !== null && innerNodeList !== undefined && innerNodeList.length > 0) this.moveInnerNode(innerNodeList);
         }
     }
+    this.innerStepDone = true;
 };
 
 /**
@@ -2549,8 +2608,8 @@ CiSELayout.prototype.findInnerNode = function (ciseCircle) {
 
         var connectedToNonImmediate = false;
 
-        for (var _i23 = 0; _i23 < circleSegment.length; _i23++) {
-            var spanningNode = circleSegment[_i23];
+        for (var _i24 = 0; _i24 < circleSegment.length; _i24++) {
+            var spanningNode = circleSegment[_i24];
 
             // Performance improvement: stop iteration if this cannot be
             // an inner node.

@@ -66,6 +66,8 @@ CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP = 6;
 // Number of iterations that should be done in between two flips.
 CiSEConstants.REVERSE_PERIOD = 25;
 
+CiSEConstants.CLUSTER_ENLARGEMENT_CHECK_PERIOD = 50;
+
 CiSEConstants.DEFAULT_USE_SMART_REPULSION_RANGE_CALCULATION = true;
 
 module.exports = CiSEConstants;
