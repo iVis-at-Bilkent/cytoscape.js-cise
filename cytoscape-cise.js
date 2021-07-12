@@ -2134,33 +2134,27 @@ CiSELayout.prototype.calcRepulsionForces = function () {
             if (!this.innerStepDone) {
                 root.updateBounds(true);
             } else {
-                for (var i = 0; i < lNodes[i]; i++) {
-                    var childNodes = lNodes[i].getChild().getNodes();
-                    for (var j = 0; j < lNodes[i].getNoOfChildren; j++) {
-                        childNodes[j].updateBounds(true);
-                    }lNodes[i].updateBounds(false);
-                }
                 root.updateBounds(false);
             }
             this.updateGrid();
         }
 
-        for (var _i15 = 0; _i15 < lNodes.length; _i15++) {
-            nodeA = lNodes[_i15];
+        for (var i = 0; i < lNodes.length; i++) {
+            nodeA = lNodes[i];
             this.calculateRepulsionForceOfANode(nodeA, processedNodeSet, gridUpdateAllowed, forceToNodeSurroundingUpdate);
             processedNodeSet.add(nodeA);
         }
     } else {
-        for (var _i16 = 0; _i16 < lNodes.length; _i16++) {
-            var _nodeA = lNodes[_i16];
-            for (var _j = _i16 + 1; _j < lNodes.length; _j++) {
-                var nodeB = lNodes[_j];
+        for (var _i15 = 0; _i15 < lNodes.length; _i15++) {
+            var _nodeA = lNodes[_i15];
+            for (var j = _i15 + 1; j < lNodes.length; j++) {
+                var nodeB = lNodes[j];
                 this.calculateRepulsionForce(_nodeA, nodeB);
             }
         }
     }
-    for (var _i17 = 0; _i17 < lNodes.length && this.step > CiSELayout.STEP_4; _i17++) {
-        var _nodeA2 = lNodes[_i17];
+    for (var _i16 = 0; _i16 < lNodes.length && this.step > CiSELayout.STEP_4; _i16++) {
+        var _nodeA2 = lNodes[_i16];
         if (_nodeA2.getChild() !== null && _nodeA2.getChild() !== undefined) {
 
             var inCircleNodes = _nodeA2.getChild().getInCircleNodes();
@@ -2172,6 +2166,20 @@ CiSELayout.prototype.calcRepulsionForces = function () {
                 }
             }
         }
+    }
+};
+
+CiSELayout.prototype.updateGrid = function () {
+    var i;
+    var nodeA;
+    var lNodes = this.graphManager.getNonOnCircleNodes();
+
+    this.grid = this.calcGrid(this.graphManager.getRoot());
+
+    // put all nodes to proper grid cells
+    for (i = 0; i < lNodes.length; i++) {
+        nodeA = lNodes[i];
+        this.addNodeToGrid(nodeA, this.graphManager.getRoot().getLeft(), this.graphManager.getRoot().getTop());
     }
 };
 
@@ -2232,8 +2240,8 @@ CiSELayout.prototype.calcTotalForces = function () {
     }
 
     var onCircleNodes = this.graphManager.getOnCircleNodes();
-    for (var _i18 = 0; _i18 < onCircleNodes.length; _i18++) {
-        var _node = onCircleNodes[_i18];
+    for (var _i17 = 0; _i17 < onCircleNodes.length; _i17++) {
+        var _node = onCircleNodes[_i17];
         var parentNode = _node.getOwner().getParent();
         var values = _node.getOwner().decomposeForce(_node);
 
@@ -2276,8 +2284,8 @@ CiSELayout.prototype.moveNodes = function () {
         var inCircleNodes = this.graphManager.getInCircleNodes();
         var inCircleNode = void 0;
 
-        for (var _i19 = 0; _i19 < inCircleNodes.length; _i19++) {
-            inCircleNode = inCircleNodes[_i19];
+        for (var _i18 = 0; _i18 < inCircleNodes.length; _i18++) {
+            inCircleNode = inCircleNodes[_i18];
             var parentNode = inCircleNode.getParent();
 
             if (inCircleNode.getOnCircleNeighbors().length > 4) {
@@ -2347,8 +2355,8 @@ CiSELayout.prototype.moveNodes = function () {
         var inSameDirection = void 0;
 
         // Check each node with its next node for swapping
-        for (var _i20 = 0; _i20 < size; _i20++) {
-            firstNode = ciseOnCircleNodes[_i20];
+        for (var _i19 = 0; _i19 < size; _i19++) {
+            firstNode = ciseOnCircleNodes[_i19];
             secondNode = firstNode.getOnCircleNodeExt().getNextNode();
             firstNodeExt = firstNode.getOnCircleNodeExt();
             secondNodeExt = secondNode.getOnCircleNodeExt();
@@ -2441,8 +2449,8 @@ CiSELayout.prototype.moveNodes = function () {
         }
 
         // Now process all safe pairs
-        for (var _i21 = 0; _i21 < safePairs.length; _i21++) {
-            var safePair = safePairs[_i21];
+        for (var _i20 = 0; _i20 < safePairs.length; _i20++) {
+            var safePair = safePairs[_i20];
 
             // Check if discrepancy is above the threshold (enough to swap)
             if (safePair.inSameDirection() || safePair.getDiscrepancy() < CiSEConstants.MIN_DISPLACEMENT_FOR_SWAP) {
@@ -2468,15 +2476,15 @@ CiSELayout.prototype.moveNodes = function () {
 
         // Update swap history
         this.swappedPairsInLastIteration = [];
-        for (var _i22 = 0; _i22 < swappedPairs.length; _i22++) {
-            this.swappedPairsInLastIteration.push(swappedPairs[_i22]);
+        for (var _i21 = 0; _i21 < swappedPairs.length; _i21++) {
+            this.swappedPairsInLastIteration.push(swappedPairs[_i21]);
         }
 
         // Reset all discrepancy values of on circle nodes.
         var node = void 0;
 
-        for (var _i23 = 0; _i23 < size; _i23++) {
-            node = ciseOnCircleNodes[_i23];
+        for (var _i22 = 0; _i22 < size; _i22++) {
+            node = ciseOnCircleNodes[_i22];
             node.getOnCircleNodeExt().setDisplacementForSwap(0.0);
         }
     }
@@ -2608,8 +2616,8 @@ CiSELayout.prototype.findInnerNode = function (ciseCircle) {
 
         var connectedToNonImmediate = false;
 
-        for (var _i24 = 0; _i24 < circleSegment.length; _i24++) {
-            var spanningNode = circleSegment[_i24];
+        for (var _i23 = 0; _i23 < circleSegment.length; _i23++) {
+            var spanningNode = circleSegment[_i23];
 
             // Performance improvement: stop iteration if this cannot be
             // an inner node.

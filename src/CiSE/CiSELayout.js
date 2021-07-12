@@ -878,12 +878,6 @@ CiSELayout.prototype.calcRepulsionForces = function(gridUpdateAllowed = true, fo
                 root.updateBounds(true);
             }
             else{
-                for(let i = 0; i < lNodes[i]; i++){
-                    let childNodes = lNodes[i].getChild().getNodes();
-                    for(let j = 0; j < lNodes[i].getNoOfChildren;j++)
-                        childNodes[j].updateBounds(true);
-                    lNodes[i].updateBounds(false);
-                }
                 root.updateBounds(false);
             }
             this.updateGrid();
@@ -920,6 +914,22 @@ CiSELayout.prototype.calcRepulsionForces = function(gridUpdateAllowed = true, fo
         }
     }
 };
+
+CiSELayout.prototype.updateGrid = function() {
+    var i;
+    var nodeA;
+    var lNodes = this.graphManager.getNonOnCircleNodes();
+    
+    this.grid = this.calcGrid(this.graphManager.getRoot());   
+  
+    // put all nodes to proper grid cells
+    for (i = 0; i < lNodes.length; i++)
+    {
+      nodeA = lNodes[i];
+      this.addNodeToGrid(nodeA, this.graphManager.getRoot().getLeft(), this.graphManager.getRoot().getTop());
+    } 
+  
+  };
 
 CiSELayout.prototype.calcRepulsionRange = function () {
     // formula is 2 x idealEdgeLength
