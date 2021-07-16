@@ -714,7 +714,7 @@ CiSECircle.prototype.reCalculateCircleSizeAndRadius = function (firstCall = fals
     if(firstCall){
 
         let largestDiagonal = 0;
-        let nodeList = this.getInCircleNodes();
+        let nodeList = this.getOnCircleNodes();
 
         for(let i = 0; i<nodeList.length; i++){
 
@@ -725,7 +725,22 @@ CiSECircle.prototype.reCalculateCircleSizeAndRadius = function (firstCall = fals
 
         largestDiagonal += CiSEConstants.DEFAULT_INNER_EDGE_LENGTH;
 
-        let diameter = perimeter / (Math.PI) - largestDiagonal*2;
+        let diameter = perimeter / (Math.PI) - largestDiagonal;
+
+        nodeList = this.getInCircleNodes();
+
+        largestDiagonal = 0;
+
+        for(let i = 0; i<nodeList.length; i++){
+
+            if(nodeList[i].getDiagonal()>largestDiagonal)
+                largestDiagonal = nodeList[i].getDiagonal();
+
+        }
+
+        largestDiagonal = 1.2*largestDiagonal + CiSEConstants.DEFAULT_INNER_EDGE_LENGTH;
+
+        diameter -= largestDiagonal;
 
         if( diameter < largestDiagonal * Math.ceil(Math.sqrt(nodeList.length))+CiSEConstants.DEFAULT_INNER_EDGE_LENGTH){
             let additionalNodeSep = (largestDiagonal * Math.ceil(Math.sqrt(nodeList.length)) - diameter)/this.getOnCircleNodes().length;
