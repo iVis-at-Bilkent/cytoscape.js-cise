@@ -57,8 +57,23 @@ require(['cytoscape', 'cytoscape-cise'], function( cytoscape, cise ){
 });
 ```
 
-Plain HTML/JS has the extension registered for you automatically, because no `require()` is needed.
+Plain HTML/JS:
 
+The extension is registered for you automatically, because no `require()` is needed. You also don't need to use `cytoscape.use( cise );`
+```html
+<head>
+  <!-- Cytoscape -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.19.0/cytoscape.min.js"></script>
+
+  <!-- src required for cise layout -->
+  <script src="https://unpkg.com/layout-base@1.0.2/layout-base.js"></script>
+  <script src="https://unpkg.com/avsdf-base/avsdf-base.js"></script>
+  <script src="https://unpkg.com/cose-base@1.0.3/cose-base.js"></script>
+
+  <!-- cytoscape-cise.js file from the repo -->
+  <script src="./cytoscape-cise.js"></script>
+</head>
+```
 
 ## API
 
