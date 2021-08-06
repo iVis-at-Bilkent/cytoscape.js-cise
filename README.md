@@ -150,6 +150,9 @@ var default = {
     
     // Padding in rendered co-ordinates around the layout
     padding: 30,
+
+    // Whether to include labels in node dimensions
+    nodeDimensionsIncludeLabels: false,
     
     // separation amount between nodes in a cluster
     // note: increasing this amount will also increase the simulation time 

@@ -1571,7 +1571,7 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters,
         clusters[_i2].forEach(function (nodeID) {
             var cytoNode = idToCytoscapeNode.get(nodeID);
             var dimensions = cytoNode.layoutDimensions({
-                nodeDimensionsIncludeLabels: false
+                nodeDimensionsIncludeLabels: options.nodeDimensionsIncludeLabels
             });
             // Adding a node into the circle
             var ciseNode = self.newCiSEOnCircleNode(new PointD(cytoNode.position('x') - dimensions.w / 2, cytoNode.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h)));
@@ -1607,7 +1607,7 @@ CiSELayout.prototype.convertToClusteredGraph = function (nodes, edges, clusters,
         if (!clustered) {
             var cytoNode = nodes[_i3];
             var dimensions = cytoNode.layoutDimensions({
-                nodeDimensionsIncludeLabels: false
+                nodeDimensionsIncludeLabels: options.nodeDimensionsIncludeLabels
             });
             var _CiSENode = _this.newNode(new PointD(cytoNode.position('x') - dimensions.w / 2, cytoNode.position('y') - dimensions.h / 2), new DimensionD(parseFloat(dimensions.w), parseFloat(dimensions.h)));
             _CiSENode.setClusterId(-1);
@@ -3881,6 +3881,7 @@ module.exports = Object.freeze({
   fit: true, // on every layout reposition of nodes, fit the viewport
   padding: 30, // padding around the simulation
   boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
+  nodeDimensionsIncludeLabels: false, // whether to include labels in node dimensions.
 
   // positioning options
   randomize: true, // use random node positions at beginning of layout

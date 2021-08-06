@@ -11,6 +11,7 @@ module.exports = Object.freeze({
   fit: true, // on every layout reposition of nodes, fit the viewport
   padding: 30, // padding around the simulation
   boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
+  nodeDimensionsIncludeLabels: false, // whether to include labels in node dimensions.
 
   // positioning options
   randomize: true, // use random node positions at beginning of layout

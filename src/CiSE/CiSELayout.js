@@ -264,7 +264,7 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters, 
         clusters[i].forEach(function(nodeID){
             let cytoNode = idToCytoscapeNode.get(nodeID);
             let dimensions = cytoNode.layoutDimensions({
-                nodeDimensionsIncludeLabels: false
+                nodeDimensionsIncludeLabels: options.nodeDimensionsIncludeLabels
             });
             // Adding a node into the circle
             let ciseNode = self.newCiSEOnCircleNode(new PointD(cytoNode.position('x') - dimensions.w / 2,
@@ -296,7 +296,7 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters, 
         if(!clustered){
             let cytoNode = nodes[i];
             let dimensions = cytoNode.layoutDimensions({
-                nodeDimensionsIncludeLabels: false
+                nodeDimensionsIncludeLabels: options.nodeDimensionsIncludeLabels
             });
             let CiSENode = this.newNode(new PointD(cytoNode.position('x') - dimensions.w / 2,
                 cytoNode.position('y') - dimensions.h / 2),
