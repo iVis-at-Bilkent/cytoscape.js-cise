@@ -768,17 +768,17 @@ CiSELayout.prototype.clusterEnlargementCheck = function()
         let parentNode = lNodes[i];
         let parentNodeOldCenterX = parentNode.getCenterX();
         let parentNodeOldCenterY = parentNode.getCenterY();
-
-        if(parentNode.getChild().getInnerNodePushCount()/(parentNode.getChild().getInCircleNodes().length)
-                    > 300*parentNode.getChild().getOnCircleNodes().length)
-            {
-                parentNode.getChild().setInnerNodePushCount(0);
-                parentNode.getChild().setAdditionalNodeSeparation(
-                    parentNode.getChild().getAdditionalNodeSeparation() + 6);
-                parentNode.getChild().reCalculateCircleSizeAndRadius();
-                parentNode.getChild().reCalculateNodePositions();
-                parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX,parentNodeOldCenterY);
-            }
+        if(parentNode.getChild())
+            if(parentNode.getChild().getInnerNodePushCount()/(parentNode.getChild().getInCircleNodes().length)
+                        > 300*parentNode.getChild().getOnCircleNodes().length)
+                {
+                    parentNode.getChild().setInnerNodePushCount(0);
+                    parentNode.getChild().setAdditionalNodeSeparation(
+                        parentNode.getChild().getAdditionalNodeSeparation() + 6);
+                    parentNode.getChild().reCalculateCircleSizeAndRadius();
+                    parentNode.getChild().reCalculateNodePositions();
+                    parentNode.reflectCenterChangeToChildren(parentNodeOldCenterX,parentNodeOldCenterY);
+                }
         
     }
 

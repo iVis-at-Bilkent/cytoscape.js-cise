@@ -2049,8 +2049,7 @@ CiSELayout.prototype.clusterEnlargementCheck = function () {
         var parentNode = lNodes[i];
         var parentNodeOldCenterX = parentNode.getCenterX();
         var parentNodeOldCenterY = parentNode.getCenterY();
-
-        if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 300 * parentNode.getChild().getOnCircleNodes().length) {
+        if (parentNode.getChild()) if (parentNode.getChild().getInnerNodePushCount() / parentNode.getChild().getInCircleNodes().length > 300 * parentNode.getChild().getOnCircleNodes().length) {
             parentNode.getChild().setInnerNodePushCount(0);
             parentNode.getChild().setAdditionalNodeSeparation(parentNode.getChild().getAdditionalNodeSeparation() + 6);
             parentNode.getChild().reCalculateCircleSizeAndRadius();
