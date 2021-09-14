@@ -32,7 +32,8 @@ const IGeometry = require('avsdf-base').layoutBase.IGeometry;
 let FDLayoutConstants = require('avsdf-base').layoutBase.FDLayoutConstants;
 let AVSDFConstants = require('avsdf-base').AVSDFConstants;
 const AVSDFLayout = require('avsdf-base').AVSDFLayout;
-const CoSELayout = require('cose-base').CoSELayout;
+const CoSEPLayout = require('cosep-base').CoSEPLayout;
+const CoSEPPortConstraint = require('cosep-base').CoSEPPortConstraint;
 const CiSEConstants = require('./CiSEConstants');
 const CiSEGraphManager = require('./CiSEGraphManager');
 const CiSECircle = require('./CiSECircle');
@@ -502,60 +503,78 @@ CiSELayout.prototype.doStep1 = function(isIncremental){
  * This method runs a spring embedder on the cluster-graph (quotient graph
  * of the clustered graph) to determine initial layout.
  */
-CiSELayout.prototype.doStep2 = function(){
+ CiSELayout.prototype.doStep2 = function(){
     this.step = CiSELayout.STEP_2;
     this.phase = CiSELayout.PHASE_OTHER;
-    let newCoSENodes = [];
-    let newCoSEEdges = [];
+    let circleToRadian = 6.28319;
+    let sizeScaleX = 1, sizeScaleY = 1;
+    let newCoSEPNodes = [];
+    let newCoSEPEdges = [];
 
     // Used for holding conversion mapping between cise and cose nodes.
-    let ciseNodeToCoseNode = new HashMap();
+    let ciseNodeToCosepNode = new HashMap();
 
-    // Used for reverse mapping between cose and cise edges while sorting
+    // Used for reverse mapping between cosep and cise edges while sorting
     // incident edges.
-    let coseEdgeToCiseEdges = new HashMap();
+    let cosepEdgeToCiseEdges = new HashMap();
 
-    // Create a CoSE layout object
-    let coseLayout = new CoSELayout();
+    // Create a CoSEP layout object
+    let cosepLayout = new CoSEPLayout();
 
-    let gm = coseLayout.newGraphManager();
-    let coseRoot = gm.addRoot();
+    let gm = cosepLayout.newGraphManager();
+    let cosepRoot = gm.addRoot();
 
-    // Traverse through all nodes and create new CoSENode's.
-    // !WARNING! = REMEMBER to set unique "id" properties to CoSENodes!!!!
+    
     let nonOnCircleNodes = this.graphManager.getNonOnCircleNodes();
+    let maxChildrenNum = 0;
+    for (let i = 0; i < nonOnCircleNodes.length; i++){
+        let ciseNode = nonOnCircleNodes[i];
+        if(ciseNode.getNoOfChildren() > maxChildrenNum)
+            maxChildrenNum = ciseNode.getNoOfChildren();
+    }
+
+    let portNum = Math.ceil(maxChildrenNum/4);
+
+    // Traverse through all non-oncircle nodes to find the largest cluster and
+    // set the scaling factors
+    for (let i = 0; i < nonOnCircleNodes.length; i++){
+        let ciseNode = nonOnCircleNodes[i];
+        if(ciseNode.getWidth()*ciseNode.getHeight()>sizeScaleX*sizeScaleY*1600){
+            // as cosep is fine tuned for 40x40 nodes, scaling is done using
+            // dimensions 40,40
+            sizeScaleX = ciseNode.getWidth()/40;
+            sizeScaleY = ciseNode.getHeight()/40;
+        }
+    }
+
+    // Traverse through all nodes and create new CoSEPNodes.
     for (let i = 0; i < nonOnCircleNodes.length; i++){
         let ciseNode = nonOnCircleNodes[i];
 
-        let newNode = coseLayout.newNode(null);
+        let newNode = cosepLayout.newNode(null);
         let loc = ciseNode.getLocation();
+        newNode.portsPerSide = portNum;
+        newNode.hasPortConstrainedEdge = true;
+        newNode.canBeSwapped = false;
+        newNode.canBeRotated = true;
         newNode.setLocation(loc.x, loc.y);
-        newNode.setWidth(ciseNode.getWidth());
-        newNode.setHeight(ciseNode.getHeight());
+        // as cosep is fine tuned for 40,40
+        // we do the layout with 40,40 nodes and then scale them back
+        newNode.setWidth(40.0);
+        newNode.setHeight(40.0);
 
-        // Set nodes corresponding to circles to be larger than original, so
-        // inter-cluster edges end up longer.
-        if (ciseNode.getChild() != null)
-        {
-            newNode.setWidth(1.2 * newNode.getWidth());
-            newNode.setHeight(1.2 * newNode.getHeight());
-        }
-
-        // !WARNING! = CoSE EXPECTS "id" PROPERTY IMPLICITLY, REMOVING IT WILL CAUSE TILING TO OCCUR ON THE WHOLE GRAPH
+        // !WARNING! = CoSE EXPECTS "id" PROPERTY IMPLICITLY, 
+        // REMOVING IT WILL CAUSE TILING TO OCCUR ON THE WHOLE GRAPH
+        //// didn't remove for CoSEP
         newNode.id = i;
 
-        coseRoot.add(newNode);
-        newCoSENodes.push(newNode);
-        ciseNodeToCoseNode.put(ciseNode, newNode);
+        cosepRoot.add(newNode);
+        newCoSEPNodes.push(newNode);
+        gm.nodesWithPorts.push(newNode);
+        ciseNodeToCosepNode.put(ciseNode, newNode);
     }
 
-    // Used for preventing duplicate edge creation between two cose nodes
-    let nodePairs = new Array(newCoSENodes.length);
-    for(let i = 0; i < nodePairs.length; i++){
-        nodePairs[i] = new Array(newCoSENodes.length);
-    }
-
-    // Traverse through edges and create cose edges for inter-cluster ones.
+    // Traverse through edges and create cosep edges for inter-cluster ones.
     let allEdges = this.graphManager.getAllEdges();
     for (let i = 0; i < allEdges.length; i++ ){
         let ciseEdge = allEdges[i];
@@ -572,52 +591,159 @@ CiSELayout.prototype.doStep2 = function(){
             targetCise = ciseEdge.getTarget().getOwner().getParent();
         }
 
-        let sourceCose = ciseNodeToCoseNode.get(sourceCise);
-        let targetCose = ciseNodeToCoseNode.get(targetCise);
-        let sourceIndex = newCoSENodes.indexOf(sourceCose);
-        let targetIndex = newCoSENodes.indexOf(targetCose);
+        let sourceCosep = ciseNodeToCosepNode.get(sourceCise);
+        let targetCosep = ciseNodeToCosepNode.get(targetCise);
+        let sourceIndex = newCoSEPNodes.indexOf(sourceCosep);
+        let targetIndex = newCoSEPNodes.indexOf(targetCosep);
 
         let newEdge;
         if (sourceIndex !== targetIndex){
             // Make sure it's an inter-cluster edge
+            newEdge = cosepLayout.newEdge(null);
+            newEdge.idealLength = newEdge.idealLength * 1;
 
-            if (nodePairs[sourceIndex][targetIndex] == null &&
-                nodePairs[targetIndex][sourceIndex] == null)
-            {
-                newEdge = coseLayout.newEdge(null);
-                coseRoot.add(newEdge, sourceCose, targetCose);
-                newCoSEEdges.push(newEdge);
+            cosepRoot.add(newEdge, sourceCosep, targetCosep);
+            newCoSEPEdges.push(newEdge);
+            cosepEdgeToCiseEdges.put(newEdge,[]);
 
-                coseEdgeToCiseEdges.put(newEdge,[]);
-
-                nodePairs[sourceIndex][targetIndex] = newEdge;
-                nodePairs[targetIndex][sourceIndex] = newEdge;
+            // ports are calculated using the angles
+            let mappedPort, angle;
+            angle = ciseEdge.getSource().getOnCircleNodeExt().getAngle();
+            // angles are stored as from 0 to 6.28319 rads
+            // signifying from 0 to 360 degrees or 2 pis
+            // therefore one quadrant is 6.28319/4
+            if( angle >= 0 && angle < (circleToRadian/8) ){
+                mappedPort = Math.round((1.5 * portNum-1) + angle * (portNum/(circleToRadian/4)));
+                // 1.5 is to align the starting point of angle with the start of ports
             }
-            else
-            {
-                newEdge =  nodePairs[sourceIndex][targetIndex];
+            else if( angle >= (circleToRadian/8) && angle < (3*circleToRadian/8)){
+                mappedPort = Math.round((2 * portNum-1) + (angle-circleToRadian/8) * (portNum/(circleToRadian/4)));
             }
+            else if( angle >= (3*circleToRadian/8) && angle < (5*circleToRadian/8)){
+                mappedPort = Math.round((3 * portNum-1) + (angle-3*circleToRadian/8) * (portNum/(circleToRadian/4)));
+            }
+            else if( angle >= (5*circleToRadian/8) && angle < (7*circleToRadian/8)){
+                mappedPort = Math.round((angle-5*circleToRadian/8) * (portNum/(circleToRadian/4)));
+            }
+            else if( angle >= (7*circleToRadian/8) && angle < (circleToRadian)){
+                mappedPort = Math.round((angle-7*circleToRadian/8) * (portNum/(circleToRadian/4)) + (portNum-1));
+            }
+            else if(angle == (circleToRadian))
+                mappedPort = Math.round(1.5*portNum);
 
-            coseEdgeToCiseEdges.get(newEdge).push(ciseEdge);
+            let constraint = new CoSEPPortConstraint(newEdge,sourceCosep);
+            constraint.portConstraintParameter = mappedPort;
+            constraint.portsPerSide = portNum;
+            constraint.portConstraintType = 2;
+            constraint.initialPortConfiguration();
+            sourceCosep.associatedPortConstraints.push(constraint);
+            newEdge.sourceConstraint = constraint;
+            gm.portConstraints.push(constraint);
+            let tempConstraint = constraint;
+
+            angle = ciseEdge.getTarget().getOnCircleNodeExt().getAngle();
+            // angles are stored as from 0 to 6.28319 rads
+            // signifying from 0 to 360 degrees or 2 pis
+            // therefore one quadrant is 6.28319/4
+            if( angle >= 0 && angle < (circleToRadian/8) ){
+                mappedPort = Math.round((1.5 * portNum-1) + angle * (portNum/(circleToRadian/4)));
+                // 1.5 is to align the starting point of angle with the start of ports
+            }
+            else if( angle >= (circleToRadian/8) && angle < (3*circleToRadian/8)){
+                mappedPort = Math.round((2 * portNum-1) + (angle-circleToRadian/8) * (portNum/(circleToRadian/4)));
+            }
+            else if( angle >= (3*circleToRadian/8) && angle < (5*circleToRadian/8)){
+                mappedPort = Math.round((3 * portNum-1) + (angle-3*circleToRadian/8) * (portNum/(circleToRadian/4)));
+            }
+            else if( angle >= (5*circleToRadian/8) && angle < (7*circleToRadian/8)){
+                mappedPort = Math.round((angle-5*circleToRadian/8) * (portNum/(circleToRadian/4)));
+            }
+            else if( angle >= (7*circleToRadian/8) && angle < (circleToRadian)){
+                mappedPort = Math.round((angle-7*circleToRadian/8) * (portNum/(circleToRadian/4)) + (portNum-1));
+            }
+            else if(angle == (circleToRadian))
+                mappedPort = Math.round(1.5*portNum);
+
+            constraint = new CoSEPPortConstraint(newEdge,targetCosep);
+            constraint.portConstraintParameter = mappedPort;
+            constraint.portsPerSide = portNum;
+            constraint.portConstraintType = 2;
+            constraint.initialPortConfiguration();
+            targetCosep.associatedPortConstraints.push(constraint);
+            newEdge.targetConstraint = constraint;
+            gm.portConstraints.push(constraint);
+
+            constraint.otherPortConstraint = tempConstraint;
+            tempConstraint.otherPortConstraint = constraint;
+            gm.edgesWithPorts.push(newEdge);
+            cosepEdgeToCiseEdges.get(newEdge).push(ciseEdge);
         }
     }
 
-    // Run CoSELayout
-    coseLayout.runLayout();
+    // Run CoSEPLayout
+    cosepLayout.initialPortConfiguration();
+    cosepLayout.initSpringEmbedder();
+    cosepLayout.runLayout();
+
+    cosepLayout.tilingPreLayout();
+
+    if(cosepLayout.toBeTiled) {
+      // Reset the graphManager settings
+      gm.resetAllNodesToApplyGravitation();
+      cosepLayout.initParameters();
+      cosepLayout.nodesWithGravity = cosepLayout.calculateNodesToApplyGravitationTo();
+      gm.setAllNodesToApplyGravitation(cosepLayout.nodesWithGravity);
+      cosepLayout.calcNoOfChildrenForAllNodes();
+      gm.calcLowestCommonAncestors();
+      gm.calcInclusionTreeDepths();
+      gm.getRoot().calcEstimatedSize();
+//      Ideal edge lengths should be calculated once and it's done above,
+//      this is because calcIdealEdgeLengths doesn't calculate ideal lengths from a constant anymore 
+//      this.cosepLayout.calcIdealEdgeLengths();  
+      gm.updateBounds();
+      cosepLayout.level = 0;
+      cosepLayout.initSpringEmbedder();
+    }
+    
+    // Initialize second phase of the algorithm
+    cosepLayout.secondPhaseInit();
+  
+    let isDone = false;
+    let tickIndex = 0;
+
+    tick:
+        while(1){
+            isDone = cosepLayout.runSpringEmbedderTick();
+            tickIndex = cosepLayout.totalIterations;
+            // For changing Phase from II to III
+            // and post-tile methods if enabled
+            if(isDone){
+                if(cosepLayout.phase === 2) {
+                    isDone = false;
+                    cosepLayout.phaseIIiterationCount = tickIndex;
+                    cosepLayout.polishingPhaseInit();
+                } else if(cosepLayout.phase === 3){
+                    cosepLayout.phaseIIIiterationCount = tickIndex;
+                    cosepLayout.tilingPostLayout();
+                    break tick;
+                }
+            }
+        }
 
     // Reflect changes back to cise nodes
-    // First update all non-on-circle nodes.
+    // First update all non-on-circle nodes' locations,
+    // with respect to the scaling factors.
     for (let i = 0; i < nonOnCircleNodes.length; i++)
     {
         let ciseNode = nonOnCircleNodes[i];
-        let coseNode = ciseNodeToCoseNode.get(ciseNode);
-        let loc = coseNode.getLocation();
-        ciseNode.setLocation(loc.x, loc.y);
+        let cosepNode = ciseNodeToCosepNode.get(ciseNode);
+        let loc = cosepNode.getLocation();
+        ciseNode.setLocation(sizeScaleX*loc.x, sizeScaleY*loc.y);
+
     }
 
-    // Then update all cise on-circle nodes, since their parents have
-    // changed location.
-
+    // Then update all cise on-circle nodes, 
+    // since their parents have changed location.
     let onCircleNodes = this.graphManager.getOnCircleNodes();
 
     for (let i = 0; i < onCircleNodes.length; i++)
@@ -626,6 +752,41 @@ CiSELayout.prototype.doStep2 = function(){
         let loc = ciseNode.getLocation();
         let parentLoc = ciseNode.getOwner().getParent().getLocation();
         ciseNode.setLocation(loc.x + parentLoc.x, loc.y + parentLoc.y);
+    }
+    
+    // cosep does 90 degree rotations and they are stored in an array
+    // rotations can be clockwise or counter-clockwise
+    // therefore, to find the final rotation amount, we iterate through the array
+    for (let i = 0; i < nonOnCircleNodes.length; i++)
+    {
+        let ciseNode = nonOnCircleNodes[i];
+        let cosepNode = ciseNodeToCosepNode.get(ciseNode);
+        let rotationValue = 0.0;
+        for( let i = 0; i< cosepNode.rotationList.length;i++)
+            if(cosepNode.rotationList[i] == "clockwise")
+                rotationValue -= 1.0;
+            else if( cosepNode.rotationList[i] == "counterclockwise")
+                rotationValue += 1.0;
+        while(rotationValue > 4.0)
+            rotationValue -= 4.0;
+        while(rotationValue < 0.0)
+            rotationValue += 4.0;
+        rotationValue = (rotationValue)*(circleToRadian/4);
+    
+        // apply rotation
+        let circle = ciseNode.getChild();
+        if(circle !== null && circle !== undefined){
+            let noOfNodes = circle.getOnCircleNodes().length;
+            let rotationAmount = (rotationValue);
+            let theta = rotationAmount;
+
+            for(let j = 0; j < noOfNodes; j++){
+                let onCircleNode = circle.getChildAt(j);
+                let onCircleNodeExt = onCircleNode.getOnCircleNodeExt();
+                onCircleNodeExt.setAngle(onCircleNodeExt.getAngle() + theta); // Change the angle
+                onCircleNodeExt.updatePosition(); // Apply the above angle change to its position
+            }
+        }
     }
 };
 

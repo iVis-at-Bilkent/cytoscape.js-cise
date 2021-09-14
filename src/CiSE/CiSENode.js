@@ -172,7 +172,7 @@ CiSENode.prototype.move = function (coolingFactor = 1) {
  * when the additional node seperation of the child circle is increased, which
  * increases the dimension of the parent non-oncircle node and slightly changes its center.
  * The small change in center of this non-oncircle node should be reflected to
- * it's children immediately and before displacements caused by forces are applied.
+ * it's children immediately and before the displacements caused by forces are applied.
  */
 CiSENode.prototype.reflectCenterChangeToChildren = function (oldX,oldY) {
     
