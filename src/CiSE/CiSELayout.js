@@ -217,27 +217,6 @@ CiSELayout.prototype.convertToClusteredGraph = function(nodes, edges, clusters, 
         idToCytoscapeNode.put(nodes[i].data('id'), nodes[i]);
     }
 
-    // If it is a function just change it
-    if (typeof clusters === "function") {
-        let cIDs = [];
-        let temp = [];
-
-        for(let i = 0; i < nodes.length; i++){
-            let cID = clusters(nodes[i]);
-            if (cID > 0 && cID !== null && cID !== undefined ) {
-                let index = cIDs.indexOf( cID );
-                if (index > -1) {
-                    temp[index].push(nodes[i].data('id'));
-                }
-                else{
-                    cIDs.push(cID);
-                    temp.push([nodes[i].data('id')]);
-                }
-            }
-        }
-        clusters = temp;
-    }
-
     // lets add the nodes in clusters to the GraphManager
     for(let i = 0; i < clusters.length; i++)
     {

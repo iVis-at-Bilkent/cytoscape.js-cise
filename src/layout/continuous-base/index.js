@@ -25,6 +25,28 @@ class ContinuousLayout {
     s.animateEnd = o.animate && o.animate === 'end';
     s.animateContinuously = o.animate && !s.animateEnd;
 
+    // If clusters option is a function, change it to array format
+    // and use it in that format afterwards
+    if (typeof s.clusters === "function") {
+      let cIDs = [];
+      let temp = [];
+
+      for(let i = 0; i < s.nodes.length; i++){
+          let cID = s.clusters(s.nodes[i]);
+          if (cID > 0 && cID !== null && cID !== undefined ) {
+              let index = cIDs.indexOf( cID );
+              if (index > -1) {
+                  temp[index].push(s.nodes[i].data('id'));
+              }
+              else{
+                  cIDs.push(cID);
+                  temp.push([s.nodes[i].data('id')]);
+              }
+          }
+      }
+      s.clusters = temp;
+    }
+
     if (o.packComponents) {
       if (this.state.clusters == null || this.state.clusters == undefined) {
         throw "ERROR: Cluster information is invalid/undefined/null. Please create the 'clusters' variable as defined in the documentation";
