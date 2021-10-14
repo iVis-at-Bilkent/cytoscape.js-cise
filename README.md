@@ -94,8 +94,14 @@ require(['cytoscape', 'cytoscape-cise'], function( cytoscape, cise ){
 });
 ```
 
-Plain HTML/JS has the extension registered for you automatically, because no `require()` is needed.
+Plain HTML/JS has the extension registered for you automatically, because no `require()` is needed. Just add the following files:
 
+```
+<script src="https://unpkg.com/layout-base/layout-base.js"></script>
+<script src="https://unpkg.com/avsdf-base/avsdf-base.js"></script>
+<script src="https://unpkg.com/cose-base/cose-base.js"></script>
+<script src="https://unpkg.com/cytoscape-cise/cytoscape-cise.js"></script>
+```
 
 ## API
 
