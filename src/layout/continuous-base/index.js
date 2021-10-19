@@ -24,6 +24,9 @@ class ContinuousLayout {
 
     s.animateEnd = o.animate && o.animate === 'end';
     s.animateContinuously = o.animate && !s.animateEnd;
+    // store component center (in this case it's whole graph)
+    let boundingBox = s.eles.boundingBox();
+    s.componentCenter = {x: boundingBox.x1 + boundingBox.w / 2, y: boundingBox.y1 + boundingBox.h / 2};
 
     // If clusters option is a function, change it to array format
     // and use it in that format afterwards
@@ -56,7 +59,7 @@ class ContinuousLayout {
       }
       
       let components = this.getDisjointSets(o.cy.$(), this.state.clusters);
-      
+
       // if there is only one component, then no need to separate states and apply component packing
       if (components.length > 1) {
         this.states = [];
@@ -66,6 +69,8 @@ class ContinuousLayout {
           state.animateEnd = o.animate && o.animate === 'end';
           state.animateContinuously = o.animate && !state.animateEnd;
           state.clusters = this.getRelevantClusters4Nodes(state.clusters, state.nodes);
+          let boundingBox = currComp.boundingBox();
+          state.componentCenter = {x: boundingBox.x1 + boundingBox.w / 2, y: boundingBox.y1 + boundingBox.h / 2}; // store component center
           this.states.push(state);
         }
       }
@@ -148,6 +153,43 @@ class ContinuousLayout {
     }
     return r;
   }
+
+  // relocates state(component) to originalCenter
+  relocateComponent(state) {
+    let minXCoord = Number.POSITIVE_INFINITY;
+    let maxXCoord = Number.NEGATIVE_INFINITY;
+    let minYCoord = Number.POSITIVE_INFINITY;
+    let maxYCoord = Number.NEGATIVE_INFINITY;
+    let nodes = state.nodes;
+    // calculate current bounding box of component
+    for (let i = 0; i < nodes.length; i++) {
+      let cyNode = nodes[i];
+      let currentPos = this.getScratch(cyNode, state.name);
+      let nodeBB = cyNode.boundingBox();
+      let leftX = currentPos.x - nodeBB.w / 2;
+      let rightX = currentPos.x + nodeBB.w / 2;
+      let topY = currentPos.y - nodeBB.h / 2;
+      let bottomY = currentPos.y + nodeBB.h / 2;
+
+      if (leftX < minXCoord)
+        minXCoord = leftX;
+      if (rightX > maxXCoord)
+        maxXCoord = rightX;
+      if (topY < minYCoord)
+        minYCoord = topY;
+      if (bottomY > maxYCoord)
+        maxYCoord = bottomY;
+    }
+    // find difference between current and original center
+    let diffOnX = state.componentCenter.x - (maxXCoord + minXCoord) / 2;
+    let diffOnY = state.componentCenter.y - (maxYCoord + minYCoord) / 2;
+    // move component to original center
+    state.nodes.forEach(n => {
+      let currentPos = this.getScratch(n, state.name);
+      currentPos.x = currentPos.x + diffOnX;
+      currentPos.y = currentPos.y + diffOnY;
+    });
+  };
 
   getScratch(el, name) {
     let scratch = el.scratch(name);
@@ -278,6 +320,7 @@ class ContinuousLayout {
       }
       // if there is no packing
       if (!this.states) {
+        this.relocateComponent(s);
         s.nodes.layoutPositions(this, s, function (node) {
           let pd = getNodePositionData(node, s);
           return { x: pd.x, y: pd.y };
@@ -292,6 +335,7 @@ class ContinuousLayout {
     if (this.states) {
       for (let i = 0; i < this.states.length; i++) {
         this.run4state(this.states[i]);
+        this.relocateComponent(this.states[i]);
       }
       this.setShifts4PackingComponents(this.states);
 

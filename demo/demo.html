@@ -91,6 +91,11 @@
         </div>
 
         <div class="options">
+          <b>Fit:</b>
+          <input type="checkbox" id="isFit" value="true" checked>
+        </div>
+
+        <div class="options">
           <b>Apply Markov Clustering on Load:</b>
           <input type="checkbox" id="markovClusteringApplied" value="true" checked>
         </div>
@@ -577,7 +582,8 @@
       refresh: 1,
       idealInterClusterEdgeLengthCoefficient: idealEdgeCoef,
       packComponents: document.getElementById('isPackComponents').checked,
-      randomize: document.getElementById('isRandomize').checked
+      randomize: document.getElementById('isRandomize').checked,
+      fit: document.getElementById('isFit').checked
     });
 
     layout.run();

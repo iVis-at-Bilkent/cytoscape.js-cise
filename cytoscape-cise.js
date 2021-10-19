@@ -3935,8 +3935,11 @@ var ContinuousLayout = function () {
 
     s.animateEnd = o.animate && o.animate === 'end';
     s.animateContinuously = o.animate && !s.animateEnd;
+    // store component center (in this case it's whole graph)
+    var boundingBox = s.eles.boundingBox();
+    s.componentCenter = { x: boundingBox.x1 + boundingBox.w / 2, y: boundingBox.y1 + boundingBox.h / 2 };
 
-    // If clusters option is a function, change it to array format 
+    // If clusters option is a function, change it to array format
     // and use it in that format afterwards
     if (typeof s.clusters === "function") {
       var cIDs = [];
@@ -3976,6 +3979,8 @@ var ContinuousLayout = function () {
           state.animateEnd = o.animate && o.animate === 'end';
           state.animateContinuously = o.animate && !state.animateEnd;
           state.clusters = this.getRelevantClusters4Nodes(state.clusters, state.nodes);
+          var _boundingBox = currComp.boundingBox();
+          state.componentCenter = { x: _boundingBox.x1 + _boundingBox.w / 2, y: _boundingBox.y1 + _boundingBox.h / 2 }; // store component center
           this.states.push(state);
         }
       }
@@ -4062,6 +4067,44 @@ var ContinuousLayout = function () {
         }
       }
       return r;
+    }
+
+    // relocates state(component) to originalCenter
+
+  }, {
+    key: 'relocateComponent',
+    value: function relocateComponent(state) {
+      var _this = this;
+
+      var minXCoord = Number.POSITIVE_INFINITY;
+      var maxXCoord = Number.NEGATIVE_INFINITY;
+      var minYCoord = Number.POSITIVE_INFINITY;
+      var maxYCoord = Number.NEGATIVE_INFINITY;
+      var nodes = state.nodes;
+      // calculate current bounding box of component
+      for (var i = 0; i < nodes.length; i++) {
+        var cyNode = nodes[i];
+        var currentPos = this.getScratch(cyNode, state.name);
+        var nodeBB = cyNode.boundingBox();
+        var leftX = currentPos.x - nodeBB.w / 2;
+        var rightX = currentPos.x + nodeBB.w / 2;
+        var topY = currentPos.y - nodeBB.h / 2;
+        var bottomY = currentPos.y + nodeBB.h / 2;
+
+        if (leftX < minXCoord) minXCoord = leftX;
+        if (rightX > maxXCoord) maxXCoord = rightX;
+        if (topY < minYCoord) minYCoord = topY;
+        if (bottomY > maxYCoord) maxYCoord = bottomY;
+      }
+      // find difference between current and original center
+      var diffOnX = state.componentCenter.x - (maxXCoord + minXCoord) / 2;
+      var diffOnY = state.componentCenter.y - (maxYCoord + minYCoord) / 2;
+      // move component to original center
+      state.nodes.forEach(function (n) {
+        var currentPos = _this.getScratch(n, state.name);
+        currentPos.x = currentPos.x + diffOnX;
+        currentPos.y = currentPos.y + diffOnY;
+      });
     }
   }, {
     key: 'getScratch',
@@ -4213,6 +4256,7 @@ var ContinuousLayout = function () {
         }
         // if there is no packing
         if (!this.states) {
+          this.relocateComponent(s);
           s.nodes.layoutPositions(this, s, function (node) {
             var pd = getNodePositionData(node, s);
             return { x: pd.x, y: pd.y };
@@ -4228,6 +4272,7 @@ var ContinuousLayout = function () {
       if (this.states) {
         for (var i = 0; i < this.states.length; i++) {
           this.run4state(this.states[i]);
+          this.relocateComponent(this.states[i]);
         }
         this.setShifts4PackingComponents(this.states);
       } else {
