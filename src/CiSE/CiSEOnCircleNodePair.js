@@ -85,11 +85,17 @@ CiSEOnCircleNodePair.prototype.hashCode = function(){
 };
 
 CiSEOnCircleNodePair.prototype.toString = function () {
+  let firstNode = this.getFirstNode();
+
+  if (!!firstNode) {
     let result = "Swap: " + this.getFirstNode().label;
     result += "<->"+ this.getSecondNode().label;
     result +=", "+ this.getDiscrepancy();
 
     return result;
+  }
+
+  return "";
 };
 
 module.exports = CiSEOnCircleNodePair;
