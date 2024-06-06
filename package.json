@@ -57,6 +57,6 @@
   },
   "dependencies": {
     "avsdf-base": "https://github.com/iVis-at-Bilkent/avsdf-base#unstable",
-    "cose-base": "^1.0.0"
+    "cose-base": "https://github.com/iVis-at-Bilkent/cose-base#unstable"
   }
 }
