@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Dogrusoz"
+  given-names: "Ugur"
+  orcid: "https://orcid.org/0000-0002-7153-0784"
+- family-names: "Belviranli"
+  given-names: "Mehmet Esat"
+  orcid: "https://orcid.org/0000-0001-9434-9833"
+- family-names: "Dilek"
+  given-names: "Alptug" 
+title: "cytoscape.js-cise"
+version: 1.0.0
+date-released: 2021-06-26
+url: "https://github.com/iVis-at-Bilkent/cytoscape.js-cise"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Dogrusoz"
+    given-names: "Ugur"
+    orcid: "https://orcid.org/0000-0002-7153-0784"
+  - family-names: "Belviranli"
+    given-names: "Mehmet Esat"
+    orcid: "https://orcid.org/0000-0001-9434-9833"
+  - family-names: "Dilek"
+    given-names: "Alptug" 
+  doi: "10.1109/TVCG.2012.178"
+  journal: "IEEE Transactions on Visualization and Computer Graphics"
+  month: 6
+  start: 953 # First page number
+  end: 966 # Last page number
+  title: "CiSE: A Circular Spring Embedder Layout Algorithm"
+  issue: 6
+  volume: 19
+  year: 2013

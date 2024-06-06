@@ -1,0 +1,23 @@
+{
+  "name": "avsdf-base",
+  "description": "Library elements of the AVSDF algorithm",
+  "main": "avsdf-base.js",
+  "dependencies": {
+    "layout-base": "^1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iVis-at-Bilkent/avsdf-base.git"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "keywords": [
+    "layout"
+  ],
+  "license": "MIT"
+}
