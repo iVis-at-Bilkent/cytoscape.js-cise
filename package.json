@@ -9,7 +9,7 @@
   },
   "scripts": {
     "postpublish": "run-s gh-pages:demo gh-pages:deploy gh-pages:clean",
-    "gh-pages:demo": "cpy demo.html . --rename=index.html",
+    "gh-pages:demo": "cpy demo/demo.html . --rename=index.html",
     "gh-pages:deploy": "gh-pages -d .",
     "gh-pages:clean": "rimraf index.html",
     "copyright": "update license",
@@ -56,7 +56,7 @@
     "cytoscape": "^3.2.0"
   },
   "dependencies": {
-    "avsdf-base": "^1.0.0",
-    "cose-base": "^1.0.0"
+    "avsdf-base": "https://github.com/iVis-at-Bilkent/avsdf-base#unstable",
+    "cose-base": "https://github.com/iVis-at-Bilkent/cose-base#unstable"
   }
 }

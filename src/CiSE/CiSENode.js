@@ -132,11 +132,11 @@ CiSENode.prototype.getNoOfChildren = function () {
  * This method moves this node as a result of the computations at the end of
  * this iteration.
  */
-CiSENode.prototype.move = function () {
+CiSENode.prototype.move = function (coolingFactor = 1) {
     let layout = this.getOwner().getGraphManager().getLayout();
 
-    this.displacementX = this.getLimitedDisplacement(this.displacementX);
-    this.displacementY = this.getLimitedDisplacement(this.displacementY);
+    this.displacementX = this.getLimitedDisplacement(this.displacementX)*coolingFactor;
+    this.displacementY = this.getLimitedDisplacement(this.displacementY)*coolingFactor;
 
     // First propagate movement to children if it's a circle
     if (this.getChild() !== null && this.getChild() !== undefined )
@@ -163,6 +163,48 @@ CiSENode.prototype.move = function () {
     {
         this.getChild().updateBounds(true);
     }
+
+};
+
+/**
+ * This method moves a nonOnCircleNode's all inCircle children when
+ * it's dimension(width and height) is changed. It should only be called
+ * when the additional node seperation of the child circle is increased, which
+ * increases the dimension of the parent non-oncircle node and slightly changes its center.
+ * The small change in center of this non-oncircle node should be reflected to
+ * it's children immediately and before displacements caused by forces are applied.
+ */
+CiSENode.prototype.reflectCenterChangeToChildren = function (oldX,oldY) {
+    
+    if (this.getChild() !== null && this.getChild() !== undefined )
+    {
+        let inCircleNodes = this.getChild().getInCircleNodes();
+        let centerX = this.getCenterX();
+        let centerY = this.getCenterY();
+        
+        for(let i = 0; i < inCircleNodes.length; i++) {
+            let node = inCircleNodes[i];
+            node.moveBy(centerX-oldX, centerY-oldY);
+        }
+    }
+
+}
+
+/**
+ * This method moves this inner node as a result of the computations at the end of
+ * this iteration. However, as the displacement can be limited because of the inner boundaries,
+ * to let layout continue, unabated displacement is reflected to layout's total displacement.
+ */
+CiSENode.prototype.innerMove = function (displacementRequestX, displacementRequestY,coolingFactor = 1) {
+    let layout = this.getOwner().getGraphManager().getLayout();
+
+    this.displacementX = this.getLimitedDisplacement(this.displacementX)*coolingFactor;
+    this.displacementY = this.getLimitedDisplacement(this.displacementY)*coolingFactor;
+
+    this.moveBy(this.displacementX, this.displacementY);
+    layout.totalDisplacement += Math.abs(this.getLimitedDisplacement(displacementRequestX)) 
+                                + Math.abs(this.getLimitedDisplacement(displacementRequestY));
+
 };
 
 /**
