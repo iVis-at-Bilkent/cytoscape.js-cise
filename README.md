@@ -9,7 +9,7 @@ CiSE(Circular Spring Embedder) is an algorithm based on the traditional force-di
 The algorithm is implemented as a Cytoscape.js extension by [i-Vis Lab](http://cs.bilkent.edu.tr/~ivis/) in Bilkent University.
 Here is a demo:
 <p align="center">
-<a href="https://raw.githack.com/iVis-at-Bilkent/cytoscape.js-cise/develop/demo/demo.html"><img src="https://www.cs.bilkent.edu.tr/~ivis/images/demo1.png" height=42px></a>
+<a href="https://ivis-at-bilkent.github.io/cytoscape.js-cise/demo/demo.html"><img src="https://www.cs.bilkent.edu.tr/~ivis/images/demo1.png" height=42px></a>
 </p>
 
 Please cite the following when using this layout:
