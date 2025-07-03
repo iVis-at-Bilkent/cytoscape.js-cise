@@ -7,7 +7,7 @@
 
 let CiSELayout = require('../CiSE/CiSELayout');
 let CiSEConstants = require('../CiSE/CiSEConstants');
-let FDLayoutConstants = require('avsdf-base').layoutBase.FDLayoutConstants;
+let FDLayoutConstants = require('cose-base').layoutBase.FDLayoutConstants;
 
 const ContinuousLayout = require('./continuous-base');
 

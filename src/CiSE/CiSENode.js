@@ -6,8 +6,8 @@
  * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
  */
 
-let FDLayoutNode = require('avsdf-base').layoutBase.FDLayoutNode;
-let IMath = require('avsdf-base').layoutBase.IMath;
+let FDLayoutNode = require('cose-base').layoutBase.FDLayoutNode;
+let IMath = require('cose-base').layoutBase.IMath;
 let CiSEConstants = require('./CiSEConstants');
 let CiSEOnCircleNodeExt = require('./CiSEOnCircleNodeExt');
 

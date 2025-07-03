@@ -6,7 +6,7 @@
  */
 
 
-let FDLayoutConstants =  require('avsdf-base').layoutBase.FDLayoutConstants;
+let FDLayoutConstants =  require('cose-base').layoutBase.FDLayoutConstants;
 
 function CiSEConstants(){}
 
