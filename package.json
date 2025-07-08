@@ -1,6 +1,6 @@
 {
   "name": "cytoscape-cise",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Circular layout extension for Cytoscape.js",
   "main": "cytoscape-cise.js",
   "author": {
