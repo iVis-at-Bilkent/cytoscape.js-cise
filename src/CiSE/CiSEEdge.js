@@ -6,7 +6,7 @@
  * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
  */
 
-let FDLayoutEdge = require('avsdf-base').layoutBase.FDLayoutEdge;
+let FDLayoutEdge = require('cose-base').layoutBase.FDLayoutEdge;
 
 // -----------------------------------------------------------------------------
 // Section: Constructors and initialization

@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("avsdf-base"), require("cose-base"));
+		module.exports = factory(require("cose-base"), require("avsdf-base"));
 	else if(typeof define === 'function' && define.amd)
-		define(["avsdf-base", "cose-base"], factory);
+		define(["cose-base", "avsdf-base"], factory);
 	else if(typeof exports === 'object')
-		exports["cytoscapeCise"] = factory(require("avsdf-base"), require("cose-base"));
+		exports["cytoscapeCise"] = factory(require("cose-base"), require("avsdf-base"));
 	else
-		root["cytoscapeCise"] = factory(root["avsdfBase"], root["coseBase"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE_0__, __WEBPACK_EXTERNAL_MODULE_22__) {
+		root["cytoscapeCise"] = factory(root["coseBase"], root["avsdfBase"]);
+})(this, function(__WEBPACK_EXTERNAL_MODULE_0__, __WEBPACK_EXTERNAL_MODULE_3__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -73,7 +73,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 15);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -185,6 +185,12 @@ module.exports = Object.assign != null ? Object.assign.bind(Object) : function (
 
 /***/ }),
 /* 3 */
+/***/ (function(module, exports) {
+
+module.exports = __WEBPACK_EXTERNAL_MODULE_3__;
+
+/***/ }),
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -200,10 +206,10 @@ module.exports = Object.assign != null ? Object.assign.bind(Object) : function (
  * A continuous layout is one that updates positions continuously, like a force-
  * directed / physics simulation layout.
  */
-module.exports = __webpack_require__(15);
+module.exports = __webpack_require__(16);
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -220,10 +226,10 @@ module.exports = __webpack_require__(15);
 var LGraph = __webpack_require__(0).layoutBase.LGraph;
 var IGeometry = __webpack_require__(0).layoutBase.IGeometry;
 var NeedlemanWunsch = __webpack_require__(0).layoutBase.NeedlemanWunsch;
-var CircularForce = __webpack_require__(13);
+var CircularForce = __webpack_require__(14);
 var CiSEConstants = __webpack_require__(1);
-var CiSEInterClusterEdgeInfo = __webpack_require__(7);
-var CiSEInterClusterEdgeSort = __webpack_require__(8);
+var CiSEInterClusterEdgeInfo = __webpack_require__(8);
+var CiSEInterClusterEdgeSort = __webpack_require__(9);
 
 function CiSECircle(parent, graphMgr, vNode) {
     LGraph.call(this, parent, graphMgr, vNode);
@@ -983,7 +989,7 @@ CiSECircle.prototype.reCalculateNodeAnglesAndPositions = function () {
 module.exports = CiSECircle;
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1100,7 +1106,7 @@ CiSEEdge.prototype.crossingWithEdge = function (other) {
 module.exports = CiSEEdge;
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1177,7 +1183,7 @@ CiSEGraphManager.prototype.setNonOnCircleNodes = function (nodes) {
 module.exports = CiSEGraphManager;
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1216,7 +1222,7 @@ CiSEInterClusterEdgeInfo.prototype.getAngle = function () {
 module.exports = CiSEInterClusterEdgeInfo;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1307,7 +1313,7 @@ var CiSEInterClusterEdgeSort = function () {
 module.exports = CiSEInterClusterEdgeSort;
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1345,15 +1351,15 @@ var PointD = __webpack_require__(0).layoutBase.PointD;
 var DimensionD = __webpack_require__(0).layoutBase.DimensionD;
 var IGeometry = __webpack_require__(0).layoutBase.IGeometry;
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
-var AVSDFConstants = __webpack_require__(0).AVSDFConstants;
-var AVSDFLayout = __webpack_require__(0).AVSDFLayout;
-var CoSELayout = __webpack_require__(22).CoSELayout;
+var AVSDFConstants = __webpack_require__(3).AVSDFConstants;
+var AVSDFLayout = __webpack_require__(3).AVSDFLayout;
+var CoSELayout = __webpack_require__(0).CoSELayout;
 var CiSEConstants = __webpack_require__(1);
-var CiSEGraphManager = __webpack_require__(6);
-var CiSECircle = __webpack_require__(4);
-var CiSENode = __webpack_require__(10);
-var CiSEEdge = __webpack_require__(5);
-var CiSEOnCircleNodePair = __webpack_require__(12);
+var CiSEGraphManager = __webpack_require__(7);
+var CiSECircle = __webpack_require__(5);
+var CiSENode = __webpack_require__(11);
+var CiSEEdge = __webpack_require__(6);
+var CiSEOnCircleNodePair = __webpack_require__(13);
 
 // Constructor
 function CiSELayout() {
@@ -2783,7 +2789,7 @@ CiSELayout.prototype.findMinimalSpanningSegment = function (node) {
 module.exports = CiSELayout;
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2800,7 +2806,7 @@ module.exports = CiSELayout;
 var FDLayoutNode = __webpack_require__(0).layoutBase.FDLayoutNode;
 var IMath = __webpack_require__(0).layoutBase.IMath;
 var CiSEConstants = __webpack_require__(1);
-var CiSEOnCircleNodeExt = __webpack_require__(11);
+var CiSEOnCircleNodeExt = __webpack_require__(12);
 
 function CiSENode(gm, loc, size, vNode) {
     // the constructor of LNode handles alternative constructors
@@ -2996,7 +3002,7 @@ CiSENode.prototype.reset = function () {
 module.exports = CiSENode;
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3359,7 +3365,7 @@ CiSEOnCircleNodeExt.prototype.getIntraClusterEdges = function () {
 module.exports = CiSEOnCircleNodeExt;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3459,7 +3465,7 @@ CiSEOnCircleNodePair.prototype.toString = function () {
 module.exports = CiSEOnCircleNodePair;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3530,13 +3536,13 @@ CircularForce.prototype.setDisplacementY = function (displacementY) {
 module.exports = CircularForce;
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var impl = __webpack_require__(3);
+var impl = __webpack_require__(4);
 
 // registers the extension on a cytoscape lib ref
 var register = function register(cytoscape) {
@@ -3555,7 +3561,7 @@ if (typeof cytoscape !== 'undefined') {
 module.exports = register;
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3578,11 +3584,11 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
  * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
  */
 
-var CiSELayout = __webpack_require__(9);
+var CiSELayout = __webpack_require__(10);
 var CiSEConstants = __webpack_require__(1);
 var FDLayoutConstants = __webpack_require__(0).layoutBase.FDLayoutConstants;
 
-var ContinuousLayout = __webpack_require__(18);
+var ContinuousLayout = __webpack_require__(19);
 
 var Layout = function (_ContinuousLayout) {
   _inherits(Layout, _ContinuousLayout);
@@ -3753,7 +3759,7 @@ var Layout = function (_ContinuousLayout) {
 module.exports = Layout;
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3847,7 +3853,7 @@ var DisjointSets = exports.DisjointSets = function () {
 }();
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3895,7 +3901,7 @@ module.exports = Object.freeze({
 });
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -3911,18 +3917,18 @@ If `packComponents` is `true`, it will run the algorithm for each connected comp
 */
 
 var assign = __webpack_require__(2);
-var defaults = __webpack_require__(17);
-var makeBoundingBox = __webpack_require__(19);
+var defaults = __webpack_require__(18);
+var makeBoundingBox = __webpack_require__(20);
 
-var _require = __webpack_require__(20),
+var _require = __webpack_require__(21),
     setInitialPositionState = _require.setInitialPositionState,
     refreshPositions = _require.refreshPositions,
     getNodePositionData = _require.getNodePositionData;
 
-var _require2 = __webpack_require__(21),
+var _require2 = __webpack_require__(22),
     multitick = _require2.multitick;
 
-var _require3 = __webpack_require__(16),
+var _require3 = __webpack_require__(17),
     DisjointSets = _require3.DisjointSets;
 
 var ContinuousLayout = function () {
@@ -4354,7 +4360,7 @@ var ContinuousLayout = function () {
 module.exports = ContinuousLayout;
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4385,7 +4391,7 @@ module.exports = function (bb, cy) {
 };
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4433,7 +4439,7 @@ var refreshPositions = function refreshPositions(nodes, state) {
 module.exports = { setInitialPositionState: setInitialPositionState, getNodePositionData: getNodePositionData, refreshPositions: refreshPositions };
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4484,12 +4490,6 @@ var multitick = function multitick(state) {
 };
 
 module.exports = { tick: tick, multitick: multitick };
-
-/***/ }),
-/* 22 */
-/***/ (function(module, exports) {
-
-module.exports = __WEBPACK_EXTERNAL_MODULE_22__;
 
 /***/ })
 /******/ ]);

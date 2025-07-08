@@ -6,7 +6,7 @@
  * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
  */
 
-let LGraphManager = require('avsdf-base').layoutBase.LGraphManager;
+let LGraphManager = require('cose-base').layoutBase.LGraphManager;
 
 // -----------------------------------------------------------------------------
 // Section: Constructors and initialization
