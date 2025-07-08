@@ -24,12 +24,12 @@
 // Section: Initializations
 // -----------------------------------------------------------------------------
 
-let Layout = require('avsdf-base').layoutBase.FDLayout;
-let HashMap = require('avsdf-base').layoutBase.HashMap;
-const PointD = require('avsdf-base').layoutBase.PointD;
-const DimensionD = require('avsdf-base').layoutBase.DimensionD;
-const IGeometry = require('avsdf-base').layoutBase.IGeometry;
-let FDLayoutConstants = require('avsdf-base').layoutBase.FDLayoutConstants;
+let Layout = require('cose-base').layoutBase.FDLayout;
+let HashMap = require('cose-base').layoutBase.HashMap;
+const PointD = require('cose-base').layoutBase.PointD;
+const DimensionD = require('cose-base').layoutBase.DimensionD;
+const IGeometry = require('cose-base').layoutBase.IGeometry;
+let FDLayoutConstants = require('cose-base').layoutBase.FDLayoutConstants;
 let AVSDFConstants = require('avsdf-base').AVSDFConstants;
 const AVSDFLayout = require('avsdf-base').AVSDFLayout;
 const CoSELayout = require('cose-base').CoSELayout;

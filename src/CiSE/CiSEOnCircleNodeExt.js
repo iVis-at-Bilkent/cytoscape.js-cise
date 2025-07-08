@@ -8,7 +8,7 @@
  * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
  */
 
-let IGeometry = require('avsdf-base').layoutBase.IGeometry;
+let IGeometry = require('cose-base').layoutBase.IGeometry;
 
 // -----------------------------------------------------------------------------
 // Section: Constructors and initializations

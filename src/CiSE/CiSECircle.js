@@ -6,9 +6,9 @@
  * Copyright: i-Vis Research Group, Bilkent University, 2007 - present
  */
 
-let LGraph = require('avsdf-base').layoutBase.LGraph;
-let IGeometry = require('avsdf-base').layoutBase.IGeometry;
-let NeedlemanWunsch = require('avsdf-base').layoutBase.NeedlemanWunsch;
+let LGraph = require('cose-base').layoutBase.LGraph;
+let IGeometry = require('cose-base').layoutBase.IGeometry;
+let NeedlemanWunsch = require('cose-base').layoutBase.NeedlemanWunsch;
 let CircularForce = require('./CircularForce');
 let CiSEConstants = require('./CiSEConstants');
 let CiSEInterClusterEdgeInfo = require('./CiSEInterClusterEdgeInfo');
